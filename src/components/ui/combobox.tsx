@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -37,6 +38,19 @@ interface ComboboxProps {
 export function Combobox({ options, value, onChange, placeholder, emptyMessage, inputPlaceholder }: ComboboxProps) {
   const [open, setOpen] = React.useState(false)
 
+  // This allows the user to type a new value that is not in the options.
+  const handleSelect = (currentValue: string) => {
+    onChange(currentValue === value ? "" : currentValue)
+    setOpen(false)
+  }
+
+  const handleInputChange = (inputValue: string) => {
+    // Directly update the form value as the user types
+    onChange(inputValue);
+  };
+
+  const displayValue = value ? options.find(option => option.value.toLowerCase() === value.toLowerCase())?.label || value : (placeholder || "Select option...");
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -46,18 +60,16 @@ export function Combobox({ options, value, onChange, placeholder, emptyMessage, 
           aria-expanded={open}
           className="w-full justify-between"
         >
-          {value
-            ? options.find((option) => option.value.toLowerCase() === value.toLowerCase())?.label
-            : placeholder || "Select option..."}
+          <span className="truncate">{displayValue}</span>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
         <Command>
-          <CommandInput 
+          <CommandInput
             placeholder={inputPlaceholder || "Search..."}
-            onValueChange={onChange}
-            defaultValue={value}
+            onValueChange={handleInputChange}
+            value={value}
           />
           <CommandList>
             <CommandEmpty>{emptyMessage || "No results found."}</CommandEmpty>
@@ -66,10 +78,7 @@ export function Combobox({ options, value, onChange, placeholder, emptyMessage, 
                 <CommandItem
                   key={option.value}
                   value={option.value}
-                  onSelect={(currentValue) => {
-                    onChange(currentValue === value ? "" : currentValue)
-                    setOpen(false)
-                  }}
+                  onSelect={handleSelect}
                 >
                   <Check
                     className={cn(

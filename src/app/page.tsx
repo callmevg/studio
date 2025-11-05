@@ -72,8 +72,16 @@ export default function Home() {
   // Helper to get scenarios synchronously for the initial check
   const getScenariosFromStorage = (): UIScenario[] => {
     if (typeof window === 'undefined') return [];
-    const data = localStorage.getItem('flowverse-scenarios');
-    return data ? JSON.parse(data) : [];
+    const data = localStorage.getItem('flowverse-flows');
+    return data ? JSON.parse(data).map((scenario: any) => {
+      if (scenario.elementIds && !scenario.methods) {
+        return { ...scenario, methods: [scenario.elementIds], elementIds: undefined };
+      }
+      if (scenario.paths && !scenario.methods) {
+        return { ...scenario, methods: scenario.paths, paths: undefined };
+      }
+      return scenario;
+    }) : [];
   };
   
   // Helper to get elements synchronously for the initial check

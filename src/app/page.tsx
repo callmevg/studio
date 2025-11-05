@@ -22,6 +22,8 @@ import ElementModal from '@/components/modals/element-modal';
 import FlowModal from '@/components/modals/flow-modal';
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from '@/components/ui/skeleton';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Terminal } from 'lucide-react';
 
 type ModalState<T> = { open: boolean; data?: T | null; mode?: 'add' | 'edit' | 'view' };
 
@@ -30,6 +32,7 @@ export default function Home() {
   const [flows, setFlows] = useState<UIFlow[]>([]);
   const [loading, setLoading] = useState(true);
   const dataInitialized = useRef(false);
+  const [firebaseConfigured, setFirebaseConfigured] = useState(true);
 
   const { toast } = useToast();
 
@@ -37,6 +40,14 @@ export default function Home() {
   const [flowModal, setFlowModal] = useState<ModalState<UIFlow>>({ open: false, mode: 'add' });
 
   useEffect(() => {
+    const isConfigured = process.env.NEXT_PUBLIC_FIREBASE_API_KEY && process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+    setFirebaseConfigured(!!isConfigured);
+
+    if (!isConfigured) {
+      setLoading(false);
+      return;
+    }
+
     signIn();
 
     const unsubscribeElements = getElements((data) => {
@@ -93,6 +104,34 @@ export default function Home() {
       event.target.value = ''; // Reset file input
     }
   };
+  
+  const renderContent = () => {
+    if (!firebaseConfigured) {
+      return (
+        <div className="flex items-center justify-center h-full p-8">
+            <Alert variant="destructive" className="max-w-2xl">
+              <Terminal className="h-4 w-4" />
+              <AlertTitle>Firebase Not Configured</AlertTitle>
+              <AlertDescription>
+                Your Firebase project credentials are not set up. Please add your project's configuration to a 
+                <code className="relative rounded bg-muted px-[0.3rem] py-[0.2rem] font-mono text-sm font-semibold mx-1">.env.local</code> 
+                file in the root of your project to continue.
+              </AlertDescription>
+            </Alert>
+        </div>
+      );
+    }
+    
+    if (loading) {
+        return (
+          <div className="flex items-center justify-center h-full">
+             <Skeleton className="w-[80%] h-[80%] rounded-lg" />
+          </div>
+        );
+    }
+
+    return <D3Graph elements={elements} flows={flows} onNodeClick={handleNodeClick} />;
+  }
 
   return (
     <div className="flex flex-col h-screen">
@@ -105,15 +144,10 @@ export default function Home() {
           onAddFlow={() => setFlowModal({ open: true, data: null, mode: 'add' })}
           onExport={handleExportData}
           onImport={handleImportData}
+          disabled={!firebaseConfigured}
         />
         <div className="flex-1 relative bg-background/50">
-          {loading ? (
-            <div className="flex items-center justify-center h-full">
-               <Skeleton className="w-[80%] h-[80%] rounded-lg" />
-            </div>
-          ) : (
-            <D3Graph elements={elements} flows={flows} onNodeClick={handleNodeClick} />
-          )}
+          {renderContent()}
         </div>
       </main>
 

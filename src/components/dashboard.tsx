@@ -14,6 +14,7 @@ interface DashboardProps {
   onAddFlow: () => void;
   onExport: () => void;
   onImport: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  disabled?: boolean;
 }
 
 export function Dashboard({
@@ -23,6 +24,7 @@ export function Dashboard({
   onAddFlow,
   onExport,
   onImport,
+  disabled = false
 }: DashboardProps) {
   const buggyElementsCount = useMemo(() => elements.filter(el => el.isBuggy).length, [elements]);
   const importInputRef = React.useRef<HTMLInputElement>(null);
@@ -61,10 +63,10 @@ export function Dashboard({
 
       <div className="space-y-2">
         <h3 className="text-lg font-semibold">Manage</h3>
-        <Button onClick={onAddElement} className="w-full justify-start">
+        <Button onClick={onAddElement} className="w-full justify-start" disabled={disabled}>
           <Plus className="mr-2 h-4 w-4" /> Add Element
         </Button>
-        <Button onClick={onAddFlow} className="w-full justify-start">
+        <Button onClick={onAddFlow} className="w-full justify-start" disabled={disabled}>
           <Plus className="mr-2 h-4 w-4" /> Add Flow
         </Button>
       </div>
@@ -73,10 +75,10 @@ export function Dashboard({
 
       <div className="space-y-2">
         <h3 className="text-lg font-semibold">Data</h3>
-        <Button onClick={onExport} variant="outline" className="w-full justify-start">
+        <Button onClick={onExport} variant="outline" className="w-full justify-start" disabled={disabled}>
           <FileJson className="mr-2 h-4 w-4" /> Export Data
         </Button>
-        <Button onClick={() => importInputRef.current?.click()} variant="outline" className="w-full justify-start">
+        <Button onClick={() => importInputRef.current?.click()} variant="outline" className="w-full justify-start" disabled={disabled}>
           <Upload className="mr-2 h-4 w-4" /> Import Data
         </Button>
         <input
@@ -85,6 +87,7 @@ export function Dashboard({
           className="hidden"
           accept=".json"
           onChange={onImport}
+          disabled={disabled}
         />
       </div>
     </div>

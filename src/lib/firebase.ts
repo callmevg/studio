@@ -12,7 +12,7 @@ import {
   serverTimestamp,
   getDocs,
 } from "firebase/firestore";
-import { getAuth, signInAnonymously, onAuthStateChanged } from "firebase/auth";
+import { getAuth, signInAnonymously, onAuthStateChanged, Auth } from "firebase/auth";
 import type { UIElement, UIFlow } from './types';
 
 // IMPORTANT: Add your Firebase project configuration to a .env.local file in the root of your project.
@@ -26,36 +26,44 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
-const db = getFirestore(app);
-const auth = getAuth(app);
+const allConfigSet = Object.values(firebaseConfig).every(Boolean);
+
+const app = allConfigSet && !getApps().length ? initializeApp(firebaseConfig) : (getApps().length > 0 ? getApp() : null);
+const db = app ? getFirestore(app) : null;
+const auth: Auth | null = app ? getAuth(app) : null;
+
 
 // For the purpose of this application, we'll use a static user ID.
 // In a real-world scenario, you would get this from the authenticated user.
 let currentUserId = 'static-user'; 
 
-onAuthStateChanged(auth, (user) => {
-  if (user) {
-    currentUserId = user.uid;
-  }
-});
+if (auth) {
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        currentUserId = user.uid;
+      }
+    });
+}
+
 
 export const signIn = async () => {
-    if (auth.currentUser) return;
+    if (!auth || auth.currentUser) return;
     try {
         await signInAnonymously(auth);
     } catch (error) {
-        console.error("Anonymous sign-in failed", error);
+        console.error("Anonymous sign-in failed. Have you configured your .env.local file with your Firebase project credentials?", error);
     }
 };
 
 const getElementsCollection = () => {
+    if (!db) throw new Error("Firebase is not configured.");
     const appId = process.env.NEXT_PUBLIC_FIREBASE_APP_ID;
     if (!appId) throw new Error("Missing NEXT_PUBLIC_FIREBASE_APP_ID in .env.local");
     return collection(db, 'artifacts', appId, 'users', currentUserId, 'elements');
 }
 
 const getFlowsCollection = () => {
+    if (!db) throw new Error("Firebase is not configured.");
     const appId = process.env.NEXT_PUBLIC_FIREBASE_APP_ID;
     if (!appId) throw new Error("Missing NEXT_PUBLIC_FIREBASE_APP_ID in .env.local");
     return collection(db, 'artifacts', appId, 'users', currentUserId, 'flows');
@@ -63,6 +71,10 @@ const getFlowsCollection = () => {
 
 export const getElements = (callback: (elements: UIElement[]) => void) => {
   try {
+    if (!db) {
+        callback([]);
+        return () => {};
+    }
     return onSnapshot(getElementsCollection(), (snapshot) => {
       const elements = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as UIElement));
       callback(elements);
@@ -72,6 +84,10 @@ export const getElements = (callback: (elements: UIElement[]) => void) => {
 
 export const getFlows = (callback: (flows: UIFlow[]) => void) => {
     try {
+        if (!db) {
+            callback([]);
+            return () => {};
+        }
         return onSnapshot(getFlowsCollection(), (snapshot) => {
             const flows = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as UIFlow));
             callback(flows);
@@ -80,29 +96,35 @@ export const getFlows = (callback: (flows: UIFlow[]) => void) => {
 };
 
 export const addElement = (elementData: Omit<UIElement, 'id' | 'createdAt'>) => {
+  if (!db) return Promise.reject("Firebase is not configured.");
   return addDoc(getElementsCollection(), { ...elementData, createdAt: serverTimestamp() });
 };
 
 export const updateElement = (id: string, elementData: Partial<Omit<UIElement, 'id'>>) => {
+  if (!db) return Promise.reject("Firebase is not configured.");
   const elementDoc = doc(db, getElementsCollection().path, id);
   return updateDoc(elementDoc, elementData);
 };
 
 export const deleteElement = (id: string) => {
+  if (!db) return Promise.reject("Firebase is not configured.");
   const elementDoc = doc(db, getElementsCollection().path, id);
   return deleteDoc(elementDoc);
 };
 
 export const addFlow = (flowData: Omit<UIFlow, 'id'>) => {
+  if (!db) return Promise.reject("Firebase is not configured.");
   return addDoc(getFlowsCollection(), flowData);
 };
 
 export const updateFlow = (id: string, flowData: Partial<Omit<UIFlow, 'id'>>) => {
+  if (!db) return Promise.reject("Firebase is not configured.");
   const flowDoc = doc(db, getFlowsCollection().path, id);
   return updateDoc(flowDoc, flowData);
 };
 
 export const deleteFlow = (id: string) => {
+  if (!db) return Promise.reject("Firebase is not configured.");
   const flowDoc = doc(db, getFlowsCollection().path, id);
   return deleteDoc(flowDoc);
 };
@@ -128,6 +150,7 @@ export const exportData = (elements: UIElement[], flows: UIFlow[]) => {
 };
 
 export const importData = async (jsonData: string) => {
+    if (!db) throw new Error("Firebase is not configured.");
     const { elements, flows } = JSON.parse(jsonData);
 
     if (!Array.isArray(elements) || !Array.isArray(flows)) {
@@ -160,6 +183,7 @@ export const importData = async (jsonData: string) => {
 };
 
 export const addSampleData = async () => {
+    if (!db) return;
     const elementsSnap = await getDocs(getElementsCollection());
     if (!elementsSnap.empty) return;
 

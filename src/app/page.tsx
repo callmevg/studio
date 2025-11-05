@@ -26,6 +26,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { TableView } from '@/components/table-view';
 
 type ModalState<T> = { open: boolean; data?: T | null; mode?: 'add' | 'edit' | 'view' };
 
@@ -41,7 +43,10 @@ export default function Home() {
   const [flowModal, setFlowModal] = useState<ModalState<UIFlow>>({ open: false, mode: 'add' });
 
   useEffect(() => {
-    signIn(); // No-op, but keeps structure
+    // No-op, but keeps structure, ensure it doesn't try to connect if no config
+    if (process.env.NEXT_PUBLIC_FIREBASE_API_KEY) {
+      signIn();
+    }
 
     const unsubscribeElements = getElements((data) => {
       setElements(data);
@@ -131,6 +136,48 @@ export default function Home() {
     setFlowModal({ ...flowModal, open: false });
     setElementModal({ open: true, data: null, mode: 'add' });
   };
+
+  const handleBulkUpdate = async (type: 'elements' | 'flows', data: any[]) => {
+     if (type === 'elements') {
+        for (const item of data) {
+            const existing = elements.find(e => e.name.toLowerCase() === item.name.toLowerCase());
+            const payload = {
+                name: item.name,
+                isBuggy: item.isBuggy || false,
+                bugDetails: item.bugDetails || '',
+                mediaLink: item.mediaLink || ''
+            };
+            if (existing) {
+                await updateElement(existing.id, payload);
+            } else {
+                await addElement(payload);
+            }
+        }
+        toast({ title: 'Success', description: 'Elements updated.' });
+    } else if (type === 'flows') {
+        for (const item of data) {
+            const existing = flows.find(f => f.name.toLowerCase() === item.name.toLowerCase());
+            const elementIds = item.elements.map((name: string) => {
+                const el = elements.find(e => e.name.toLowerCase() === name.toLowerCase().trim());
+                return el ? el.id : null;
+            }).filter(Boolean);
+
+            if (elementIds.length === 0) continue;
+
+            const payload = {
+                name: item.name,
+                group: item.group || '',
+                elementIds: elementIds,
+            };
+            if (existing) {
+                await updateFlow(existing.id, payload);
+            } else {
+                await addFlow(payload);
+            }
+        }
+        toast({ title: 'Success', description: 'Flows updated.' });
+    }
+  };
   
   const renderContent = () => {
     if (loading && elements.length === 0) {
@@ -142,14 +189,29 @@ export default function Home() {
     }
 
     return (
-        <div className="w-full h-full relative">
-            <D3Graph elements={elements} flows={flows} onNodeClick={handleNodeClick} />
-            <div className="absolute bottom-4 right-4">
-                 <Button onClick={() => setElementModal({ open: true, data: null, mode: 'add' })}>
-                    <Plus className="mr-2 h-4 w-4" /> Add Element
-                </Button>
+        <Tabs defaultValue="graph" className="w-full h-full flex flex-col">
+            <div className="flex justify-center border-b">
+                <TabsList>
+                    <TabsTrigger value="graph">Graph</TabsTrigger>
+                    <TabsTrigger value="table">Table</TabsTrigger>
+                </TabsList>
             </div>
-        </div>
+            <TabsContent value="graph" className="flex-1 overflow-hidden relative">
+                 <D3Graph elements={elements} flows={flows} onNodeClick={handleNodeClick} />
+                <div className="absolute bottom-4 right-4">
+                    <Button onClick={() => setElementModal({ open: true, data: null, mode: 'add' })}>
+                        <Plus className="mr-2 h-4 w-4" /> Add Element
+                    </Button>
+                </div>
+            </TabsContent>
+            <TabsContent value="table" className="flex-1 overflow-auto p-4">
+                <TableView 
+                    elements={elements} 
+                    flows={flows} 
+                    onBulkUpdate={handleBulkUpdate} 
+                />
+            </TabsContent>
+        </Tabs>
     );
   }
 

@@ -15,11 +15,31 @@ const D3Graph: React.FC<D3GraphProps> = ({ elements, flows, onNodeClick }) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const simulationRef = useRef<d3.Simulation<d3.SimulationNodeDatum, undefined>>();
 
-  const validFlows = useMemo(() => flows.filter(f => f && f.id), [flows]);
+  const validFlows = useMemo(() => flows.filter(f => f && f.id && f.elementIds), [flows]);
   const flowColorScale = useMemo(() => 
     d3.scaleOrdinal(d3.schemeCategory10).domain(validFlows.map(f => f.id)),
     [validFlows]
   );
+  
+  const elementFlowCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    elements.forEach(el => counts[el.id] = 0);
+    validFlows.forEach(flow => {
+        flow.elementIds.forEach(elementId => {
+            if (counts[elementId] !== undefined) {
+                counts[elementId]++;
+            }
+        });
+    });
+    return counts;
+  }, [elements, validFlows]);
+
+  const radiusScale = useMemo(() => {
+      const counts = Object.values(elementFlowCounts);
+      const minCount = Math.min(...counts) || 1;
+      const maxCount = Math.max(...counts) || 1;
+      return d3.scaleSqrt().domain([minCount, maxCount]).range([25, 45]);
+  }, [elementFlowCounts]);
 
   useEffect(() => {
     if (!svgRef.current || !elements) return;
@@ -93,7 +113,7 @@ const D3Graph: React.FC<D3GraphProps> = ({ elements, flows, onNodeClick }) => {
             .force('link', d3.forceLink(links).id((d: any) => d.id).distance(150))
             .force('charge', d3.forceManyBody().strength(-400))
             .force('center', d3.forceCenter(width / 2, height / 2))
-            .force('collision', d3.forceCollide().radius(60));
+            .force('collision', d3.forceCollide().radius(d => radiusScale(elementFlowCounts[(d as UIElement).id] || 1) + 10));
     } else {
         simulationRef.current.nodes(nodes as d3.SimulationNodeDatum[]);
         (simulationRef.current.force('link') as d3.ForceLink<any, any>).links(links);
@@ -127,7 +147,7 @@ const D3Graph: React.FC<D3GraphProps> = ({ elements, flows, onNodeClick }) => {
       .call(drag(simulation));
 
     node.append('circle')
-      .attr('r', 30)
+      .attr('r', d => radiusScale(elementFlowCounts[d.id] || 1))
       .attr('fill', 'hsl(var(--card))')
       .attr('stroke', d => d.isBuggy ? 'hsl(var(--destructive))' : 'hsl(var(--primary))')
       .attr('stroke-width', d => d.isBuggy ? 4 : 2.5);
@@ -152,8 +172,21 @@ const D3Graph: React.FC<D3GraphProps> = ({ elements, flows, onNodeClick }) => {
             const dy = target.y - source.y;
             const dr = Math.sqrt(dx * dx + dy * dy);
 
+            const sourceRadius = radiusScale(elementFlowCounts[source.id] || 1);
+            const targetRadius = radiusScale(elementFlowCounts[target.id] || 1);
+
+            const sourcePoint = {
+                x: source.x + (dx * sourceRadius / dr),
+                y: source.y + (dy * sourceRadius / dr)
+            };
+            const targetPoint = {
+                x: target.x - (dx * targetRadius / dr),
+                y: target.y - (dy * targetRadius / dr)
+            };
+            
+
             if (d.parallelTotal <= 1) {
-              return `M${source.x},${source.y}L${target.x},${target.y}`;
+              return `M${sourcePoint.x},${sourcePoint.y}L${targetPoint.x},${targetPoint.y}`;
             }
 
             const totalShift = 15;
@@ -162,10 +195,10 @@ const D3Graph: React.FC<D3GraphProps> = ({ elements, flows, onNodeClick }) => {
             const normX = -dy / dr;
             const normY = dx / dr;
 
-            const midX = (source.x + target.x) / 2 + offset * normX;
-            const midY = (source.y + target.y) / 2 + offset * normY;
+            const midX = (sourcePoint.x + targetPoint.x) / 2 + offset * normX;
+            const midY = (sourcePoint.y + targetPoint.y) / 2 + offset * normY;
 
-            return `M${source.x},${source.y}Q${midX},${midY},${target.x},${target.y}`;
+            return `M${sourcePoint.x},${sourcePoint.y}Q${midX},${midY},${targetPoint.x},${targetPoint.y}`;
         });
 
       node.attr('transform', d => `translate(${d.x},${d.y})`);
@@ -177,7 +210,7 @@ const D3Graph: React.FC<D3GraphProps> = ({ elements, flows, onNodeClick }) => {
         simulation.stop();
     };
 
-  }, [elements, validFlows, onNodeClick, flowColorScale]);
+  }, [elements, validFlows, onNodeClick, flowColorScale, radiusScale, elementFlowCounts]);
 
   const drag = (simulation: d3.Simulation<d3.SimulationNodeDatum, undefined>) => {
     function dragstarted(event: d3.D3DragEvent<any, any, any>, d: any) {

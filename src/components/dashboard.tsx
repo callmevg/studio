@@ -3,9 +3,9 @@
 
 import React from 'react';
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { Edit, GitFork, Plus, Trash2 } from "lucide-react";
+import { Edit, Plus, Trash2 } from "lucide-react";
 import type { UIFlow } from '@/lib/types';
 import { ScrollArea } from './ui/scroll-area';
 import {
@@ -20,6 +20,7 @@ interface DashboardProps {
   onAddFlow: () => void;
   onEditFlow: (flow: UIFlow) => void;
   onDeleteFlow: (flowId: string) => void;
+  onAddElement: () => void;
   disabled?: boolean;
 }
 
@@ -28,6 +29,7 @@ export function Dashboard({
   onAddFlow,
   onEditFlow,
   onDeleteFlow,
+  onAddElement,
   disabled = false
 }: DashboardProps) {
 
@@ -43,17 +45,18 @@ export function Dashboard({
   const groupKeys = Object.keys(groupedFlows).sort();
 
   return (
-    <div className="w-80 border-r bg-background flex flex-col p-4 space-y-4">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold tracking-tight">Flows</h2>
-        <Button onClick={onAddFlow} size="sm" disabled={disabled}>
-            <Plus className="mr-2 h-4 w-4" /> Add Flow
-        </Button>
+    <div className="w-80 border-r bg-background flex flex-col">
+      <div className="p-4 space-y-4">
+        <div className="flex justify-between items-center">
+            <h2 className="text-2xl font-bold tracking-tight">Flows</h2>
+            <Button onClick={onAddFlow} size="sm" disabled={disabled}>
+                <Plus className="mr-2 h-4 w-4" /> Add Flow
+            </Button>
+        </div>
+        <Separator />
       </div>
 
-      <Separator />
-
-      <ScrollArea className="flex-1">
+      <ScrollArea className="flex-1 px-4">
         <div className="space-y-2">
             {flows.length === 0 && !disabled ? (
                 <p className="text-sm text-muted-foreground text-center py-4">No flows created yet.</p>
@@ -87,6 +90,11 @@ export function Dashboard({
             )}
         </div>
       </ScrollArea>
+      <div className="p-4 border-t">
+        <Button onClick={onAddElement} className="w-full" variant="outline">
+            <Plus className="mr-2 h-4 w-4" /> Add Element
+        </Button>
+      </div>
     </div>
   );
 }

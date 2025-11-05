@@ -223,11 +223,6 @@ export default function Home() {
             </div>
             <TabsContent value="graph" className="flex-1 overflow-hidden relative">
                  <D3Graph elements={elements} flows={flows} onNodeClick={handleNodeClick} />
-                <div className="absolute bottom-4 right-4">
-                    <Button onClick={() => setElementModal({ open: true, data: null, mode: 'add' })}>
-                        <Plus className="mr-2 h-4 w-4" /> Add Element
-                    </Button>
-                </div>
             </TabsContent>
             <TabsContent value="table" className="flex-1 overflow-auto p-4">
                 <TableView 
@@ -249,6 +244,7 @@ export default function Home() {
           onAddFlow={() => setFlowModal({ open: true, data: null, mode: 'add' })}
           onEditFlow={handleEditFlow}
           onDeleteFlow={handleDeleteFlow}
+          onAddElement={() => setElementModal({ open: true, data: null, mode: 'add' })}
         />
         <div className="flex-1 relative bg-background/50">
           {renderContent()}

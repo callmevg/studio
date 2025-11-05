@@ -37,26 +37,11 @@ interface ComboboxProps {
 
 export function Combobox({ options, value, onChange, placeholder, emptyMessage, inputPlaceholder }: ComboboxProps) {
   const [open, setOpen] = React.useState(false)
-  // Use a local state for the input value to allow typing
-  const [inputValue, setInputValue] = React.useState(value || "");
-
-  // When the external value changes, update the internal input value
-  React.useEffect(() => {
-    setInputValue(value || "");
-  }, [value]);
 
   const handleSelect = (currentValue: string) => {
     onChange(currentValue);
-    setInputValue(currentValue); // Ensure input reflects selection
     setOpen(false)
   }
-  
-  // This function is for when the user types in the input
-  const handleInputChange = (search: string) => {
-    setInputValue(search);
-    // We update the form value on every keystroke to allow creating new items
-    onChange(search);
-  };
 
   const displayValue = value ? options.find(option => option.value.toLowerCase() === value.toLowerCase())?.label || value : (placeholder || "Select option...");
   
@@ -77,19 +62,19 @@ export function Combobox({ options, value, onChange, placeholder, emptyMessage, 
         <Command>
           <CommandInput
             placeholder={inputPlaceholder || "Search..."}
-            onValueChange={handleInputChange}
-            value={inputValue}
+            onValueChange={onChange} // Directly use onChange for input changes
+            value={value}
           />
           <CommandList>
             <CommandEmpty>
-                {inputValue ? (
+                {value && !options.some(o => o.value.toLowerCase() === value.toLowerCase()) ? (
                     <CommandItem
-                        value={inputValue}
-                        onSelect={() => handleSelect(inputValue)}
+                        value={value}
+                        onSelect={() => handleSelect(value)}
                         className="flex items-center"
                     >
                         <PlusCircle className="mr-2 h-4 w-4" />
-                        Create "{inputValue}"
+                        Create "{value}"
                     </CommandItem>
                 ) : (
                     emptyMessage || "No results found."

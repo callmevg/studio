@@ -1,3 +1,4 @@
+
 "use client";
 
 import { z } from "zod";
@@ -26,7 +27,7 @@ import { useToast } from "@/hooks/use-toast";
 import type { UIElement, UIFlow } from "@/lib/types";
 import { useEffect, useState } from "react";
 import { ArrowLeft, ArrowRight, ChevronsDown, ChevronsUp, Trash2 } from "lucide-react";
-import { deleteFlow } from "@/lib/firebase";
+import { deleteFlow } from "@/lib/localStorage";
 import { cn } from "@/lib/utils";
 
 const formSchema = z.object({
@@ -170,3 +171,5 @@ export default function FlowModal({ isOpen, setIsOpen, flow, elements, onSave }:
     </Dialog>
   );
 }
+
+    

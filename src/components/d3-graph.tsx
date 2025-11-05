@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useEffect, useRef, useMemo } from 'react';
@@ -14,11 +15,14 @@ const D3Graph: React.FC<D3GraphProps> = ({ elements, flows, onNodeClick }) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const simulationRef = useRef<d3.Simulation<d3.SimulationNodeDatum, undefined>>();
 
+  const validFlows = useMemo(() => flows.filter(f => f && f.id), [flows]);
   const flowColorScale = useMemo(() => 
-    d3.scaleOrdinal(d3.schemeCategory10), [flows]);
+    d3.scaleOrdinal(d3.schemeCategory10).domain(validFlows.map(f => f.id)),
+    [validFlows]
+  );
 
   useEffect(() => {
-    if (!svgRef.current || elements.length === 0) return;
+    if (!svgRef.current || !elements) return;
 
     const svg = d3.select(svgRef.current);
     const width = svg.node()!.getBoundingClientRect().width;
@@ -28,7 +32,6 @@ const D3Graph: React.FC<D3GraphProps> = ({ elements, flows, onNodeClick }) => {
 
     const container = svg.append('g');
     
-    // Zoom behavior
     const zoom = d3.zoom<SVGSVGElement, unknown>()
       .scaleExtent([0.2, 5])
       .on('zoom', (event) => {
@@ -36,9 +39,8 @@ const D3Graph: React.FC<D3GraphProps> = ({ elements, flows, onNodeClick }) => {
       });
     svg.call(zoom);
 
-    // Arrowhead marker definition
     container.append('defs').selectAll('marker')
-      .data(flows.map(f => f.id))
+      .data(validFlows.map(f => f.id))
       .join('marker')
         .attr('id', d => `arrow-${d}`)
         .attr('viewBox', '0 -5 10 10')
@@ -52,28 +54,35 @@ const D3Graph: React.FC<D3GraphProps> = ({ elements, flows, onNodeClick }) => {
         .attr('fill', d => flowColorScale(d));
 
     const nodes = elements.map(d => ({ ...d }));
+    const nodeIds = new Set(elements.map(e => e.id));
     
     const links: any[] = [];
-    flows.forEach(flow => {
+    validFlows.forEach(flow => {
+      if (!flow.elementIds) return;
       for (let i = 0; i < flow.elementIds.length - 1; i++) {
-        links.push({
-          source: flow.elementIds[i],
-          target: flow.elementIds[i + 1],
-          flowId: flow.id,
-        });
+        if (nodeIds.has(flow.elementIds[i]) && nodeIds.has(flow.elementIds[i+1])) {
+            links.push({
+              source: flow.elementIds[i],
+              target: flow.elementIds[i + 1],
+              flowId: flow.id,
+            });
+        }
       }
     });
 
-    // Group links for offsetting parallel paths
     const linkGroups: { [key: string]: any[] } = {};
     links.forEach(link => {
-      const key = (link.source < link.target) ? `${link.source}-${link.target}` : `${link.target}-${link.source}`;
+      const sourceId = typeof link.source === 'object' ? link.source.id : link.source;
+      const targetId = typeof link.target === 'object' ? link.target.id : link.target;
+      const key = (sourceId < targetId) ? `${sourceId}-${targetId}` : `${targetId}-${sourceId}`;
       if (!linkGroups[key]) linkGroups[key] = [];
       linkGroups[key].push(link);
     });
 
     links.forEach(link => {
-        const key = (link.source.id < link.target.id) ? `${link.source.id}-${link.target.id}` : `${link.target.id}-${link.source.id}`;
+        const sourceId = typeof link.source === 'object' ? link.source.id : link.source;
+        const targetId = typeof link.target === 'object' ? link.target.id : link.target;
+        const key = (sourceId < targetId) ? `${sourceId}-${targetId}` : `${targetId}-${sourceId}`;
         const group = linkGroups[key];
         link.parallelIndex = group.indexOf(link);
         link.parallelTotal = group.length;
@@ -147,8 +156,7 @@ const D3Graph: React.FC<D3GraphProps> = ({ elements, flows, onNodeClick }) => {
               return `M${source.x},${source.y}L${target.x},${target.y}`;
             }
 
-            // Offset for parallel lines
-            const totalShift = 15; // Max distance from center line
+            const totalShift = 15;
             const offset = (d.parallelIndex - (d.parallelTotal - 1) / 2) * totalShift / d.parallelTotal;
             
             const normX = -dy / dr;
@@ -169,7 +177,7 @@ const D3Graph: React.FC<D3GraphProps> = ({ elements, flows, onNodeClick }) => {
         simulation.stop();
     };
 
-  }, [elements, flows, onNodeClick, flowColorScale]);
+  }, [elements, validFlows, onNodeClick, flowColorScale]);
 
   const drag = (simulation: d3.Simulation<d3.SimulationNodeDatum, undefined>) => {
     function dragstarted(event: d3.D3DragEvent<any, any, any>, d: any) {

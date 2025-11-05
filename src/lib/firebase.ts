@@ -163,23 +163,29 @@ export const importData = async (jsonData: string) => {
     existingElementsSnap.forEach(doc => batch.delete(doc.ref));
     const existingFlowsSnap = await getDocs(getFlowsCollection());
     existingFlowsSnap.forEach(doc => batch.delete(doc.ref));
-
+    
+    await batch.commit();
+    
+    const newBatch = writeBatch(db);
     const idMap: { [key: string]: string } = {};
+
     for (const el of elements) {
       const oldId = el.id;
       const newDocRef = doc(getElementsCollection());
-      const { id, ...data } = el; 
-      batch.set(newDocRef, { ...data, createdAt: Timestamp.fromDate(new Date(data.createdAt)) });
+      const { id, ...data } = el;
+      newBatch.set(newDocRef, { ...data, createdAt: serverTimestamp() });
       idMap[oldId] = newDocRef.id;
     }
 
     for (const flow of flows) {
         const newDocRef = doc(getFlowsCollection());
         const newElementIds = flow.elementIds.map((oldId: string) => idMap[oldId]).filter(Boolean);
-        batch.set(newDocRef, { name: flow.name, elementIds: newElementIds });
+        if (newElementIds.length > 0) {
+            newBatch.set(newDocRef, { name: flow.name, elementIds: newElementIds });
+        }
     }
 
-    await batch.commit();
+    await newBatch.commit();
 };
 
 export const addSampleData = async () => {

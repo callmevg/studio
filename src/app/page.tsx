@@ -51,7 +51,7 @@ export default function Home() {
     const unsubscribeElements = getElements((data) => {
       setElements(data);
       if (!dataInitialized.current) {
-        checkAndInitData(data, flows);
+        checkAndInitData(data, getFlowsFromStorage());
       }
       setLoading(false);
     });
@@ -59,7 +59,7 @@ export default function Home() {
     const unsubscribeFlows = getFlows((data) => {
       setFlows(data);
        if (!dataInitialized.current) {
-        checkAndInitData(elements, data);
+        checkAndInitData(getElementsFromStorage(), data);
       }
     });
 
@@ -68,8 +68,27 @@ export default function Home() {
       unsubscribeFlows();
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  
+  // Helper to get flows synchronously for the initial check
+  const getFlowsFromStorage = (): UIFlow[] => {
+    if (typeof window === 'undefined') return [];
+    const data = localStorage.getItem('flowverse-flows');
+    return data ? JSON.parse(data) : [];
+  };
+  
+  // Helper to get elements synchronously for the initial check
+  const getElementsFromStorage = (): UIElement[] => {
+    if (typeof window === 'undefined') return [];
+    const data = localStorage.getItem('flowverse-elements');
+    return data ? JSON.parse(data) : [];
+  };
+
 
   const checkAndInitData = (currentElements: UIElement[], currentFlows: UIFlow[]) => {
+    if (!dataInitialized.current && currentElements.length === 0 && currentFlows.length > 0) {
+        // This case can happen if flows exist but elements don't, which is unlikely but possible.
+        // We still want to initialize sample data to have a consistent state.
+    }
     if (!dataInitialized.current && currentElements.length === 0 && currentFlows.length === 0) {
         addSampleData();
         toast({ title: "Welcome!", description: "We've added some sample data to get you started." });
@@ -150,7 +169,6 @@ export default function Home() {
             if (existing) {
                 return updateElement(existing.id, payload);
             } else {
-                 // This path is less likely with the new table, but good to have
                 return addElement(payload);
             }
         });
@@ -281,6 +299,18 @@ export default function Home() {
           flow={flowModal.data}
           elements={elements}
           onSave={async (data, id) => {
+            const isNameTaken = flows.some(
+                (flow) => flow.name.toLowerCase() === data.name.toLowerCase() && flow.id !== id
+            );
+
+            if (isNameTaken) {
+              toast({
+                variant: "destructive",
+                title: "Duplicate Name",
+                description: `A flow with the name "${data.name}" already exists.`,
+              });
+              return;
+            }
             try {
               if (id) {
                 await updateFlow(id, data);

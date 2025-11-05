@@ -113,7 +113,7 @@ export default function FlowModal({ isOpen, setIsOpen, flow, elements, onSave, o
   };
   
   const ElementItem = ({ element, onAction, actionIcon, onMove, canMoveUp, canMoveDown }: any) => (
-    <div className="flex items-center justify-between p-2 rounded-md hover:bg-accent">
+    <div className="flex items-center justify-between p-2 rounded-md hover:bg-accent/50">
       <span className="text-sm">{element.name}</span>
       <div className="flex items-center space-x-1">
         {onMove && (
@@ -131,6 +131,8 @@ export default function FlowModal({ isOpen, setIsOpen, flow, elements, onSave, o
     <Dialog open={isOpen} onOpenChange={(open) => {
         if (!open) {
             form.reset();
+            setSelectedElements([]);
+            setAvailableElements([]);
         }
         setIsOpen(open);
     }}>
@@ -174,27 +176,35 @@ export default function FlowModal({ isOpen, setIsOpen, flow, elements, onSave, o
               <FormLabel>Flow Sequence</FormLabel>
               <div className="grid grid-cols-2 gap-4">
                 <div className="border rounded-md p-2 space-y-1">
-                  <div className="flex justify-between items-center">
-                    <h4 className="font-semibold text-center text-sm">Available Elements</h4>
+                  <div className="flex justify-between items-center px-2">
+                    <h4 className="font-semibold text-sm">Available Elements</h4>
                     <Button type="button" variant="outline" size="sm" onClick={onAddNewElement}>
                       <Plus className="mr-2 h-4 w-4" /> Add New
                     </Button>
                   </div>
                   <ScrollArea className="h-64">
-                    {availableElements.map(el => <ElementItem key={el.id} element={el} onAction={() => handleSelect(el)} actionIcon={<ArrowRight className="h-4 w-4 text-green-500" />} />)}
+                    {availableElements.length > 0 ? (
+                        availableElements.map(el => <ElementItem key={el.id} element={el} onAction={() => handleSelect(el)} actionIcon={<ArrowRight className="h-4 w-4 text-green-500" />} />)
+                    ) : (
+                        <p className="text-xs text-muted-foreground text-center p-4">No available elements.</p>
+                    )}
                   </ScrollArea>
                 </div>
                 <div className="border rounded-md p-2 space-y-1">
-                   <h4 className="font-semibold text-center text-sm">Selected Elements</h4>
+                   <h4 className="font-semibold text-center text-sm px-2">Selected Elements</h4>
                   <ScrollArea className="h-64">
-                    {selectedElements.map((el, i) => <ElementItem key={el.id} element={el} onAction={() => handleDeselect(el)} actionIcon={<ArrowLeft className="h-4 w-4 text-red-500" />} onMove={(dir: 'up' | 'down') => moveElement(i, dir)} canMoveUp={i > 0} canMoveDown={i < selectedElements.length - 1} />)}
+                     {selectedElements.length > 0 ? (
+                        selectedElements.map((el, i) => <ElementItem key={el.id} element={el} onAction={() => handleDeselect(el)} actionIcon={<ArrowLeft className="h-4 w-4 text-red-500" />} onMove={(dir: 'up' | 'down') => moveElement(i, dir)} canMoveUp={i > 0} canMoveDown={i < selectedElements.length - 1} />)
+                     ) : (
+                        <p className="text-xs text-muted-foreground text-center p-4">Select elements from the left panel.</p>
+                     )}
                   </ScrollArea>
                 </div>
               </div>
-               <FormMessage>{form.formState.errors.elementIds?.message}</FormMessage>
+               <FormMessage className="pl-1">{form.formState.errors.elementIds?.message}</FormMessage>
             </FormItem>
 
-            <DialogFooter className={cn("sm:justify-between", !flow && "sm:justify-end")}>
+            <DialogFooter className={cn("pt-4", flow ? "sm:justify-between" : "sm:justify-end")}>
               {flow && <Button type="button" variant="destructive" onClick={handleDelete}><Trash2 className="mr-2 h-4 w-4" />Delete Flow</Button>}
               <Button type="submit">Save Flow</Button>
             </DialogFooter>

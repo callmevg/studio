@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { UIElement, UIFlow } from '@/lib/types';
 import { Checkbox } from './ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
-import { Trash2 } from 'lucide-react';
+import { Plus } from 'lucide-react';
 
 interface TableViewProps {
     elements: UIElement[];
@@ -64,7 +64,6 @@ export function TableView({ elements, flows, onBulkUpdate }: TableViewProps) {
                 onBulkUpdate('elements', elementsToUpdate);
             } else { // flows
                 const flowsToUpdate = editableFlows.map(flow => {
-                    // This is a bit tricky since we have names in the table, but need ids for the update.
                     const elementIds = flow.elementIds.map(name => {
                         const element = elements.find(el => el.name.toLowerCase() === name.toLowerCase());
                         return element ? element.id : name; // Keep name if not found, let parent handle it
@@ -74,7 +73,7 @@ export function TableView({ elements, flows, onBulkUpdate }: TableViewProps) {
                         id: flow.id,
                         name: flow.name,
                         group: flow.group || '',
-                        elements: elementIds, // The parent expects `elements` not `elementIds`
+                        elements: elementIds,
                     };
                 });
                  onBulkUpdate('flows', flowsToUpdate);
@@ -82,6 +81,31 @@ export function TableView({ elements, flows, onBulkUpdate }: TableViewProps) {
         } catch (error) {
             toast({ variant: 'destructive', title: 'Save Error', description: 'Failed to save changes.' });
         }
+    };
+    
+    const handleAddElement = () => {
+        const newId = `new-${Date.now()}`;
+        // @ts-ignore
+        const newElement: UIElement = {
+            id: newId,
+            name: 'New Element',
+            isBuggy: false,
+            bugDetails: '',
+            mediaLink: '',
+            createdAt: { toDate: () => new Date() }
+        };
+        setEditableElements(prev => [...prev, newElement]);
+    };
+
+    const handleAddFlow = () => {
+        const newId = `new-${Date.now()}`;
+        const newFlow: UIFlow = {
+            id: newId,
+            name: 'New Flow',
+            elementIds: [],
+            group: ''
+        };
+        setEditableFlows(prev => [...prev, newFlow]);
     };
 
 
@@ -91,8 +115,15 @@ export function TableView({ elements, flows, onBulkUpdate }: TableViewProps) {
         <div className="space-y-6">
             <Card>
                 <CardHeader>
-                    <CardTitle>Elements</CardTitle>
-                    <CardDescription>View and edit your UI elements directly in the table.</CardDescription>
+                    <div className="flex justify-between items-center">
+                        <div>
+                            <CardTitle>Elements</CardTitle>
+                            <CardDescription>View and edit your UI elements directly in the table.</CardDescription>
+                        </div>
+                        <Button onClick={handleAddElement} size="sm">
+                            <Plus className="mr-2 h-4 w-4" /> Add Element
+                        </Button>
+                    </div>
                 </CardHeader>
                 <CardContent>
                     <div className="space-y-4">
@@ -140,14 +171,21 @@ export function TableView({ elements, flows, onBulkUpdate }: TableViewProps) {
 
             <Card>
                 <CardHeader>
-                    <CardTitle>Flows</CardTitle>
-                    <CardDescription>
-                        View and edit your user flows. Use comma-separated names for elements.
-                        <br />
-                        <span className="text-xs text-muted-foreground">
-                            Available elements: <span className="font-mono text-xs bg-muted p-1 rounded">{elementNamesList}</span>
-                        </span>
-                    </CardDescription>
+                    <div className="flex justify-between items-center">
+                        <div>
+                            <CardTitle>Flows</CardTitle>
+                             <CardDescription>
+                                View and edit your user flows. Use comma-separated names for elements.
+                                <br />
+                                <span className="text-xs text-muted-foreground">
+                                    Available elements: <span className="font-mono text-xs bg-muted p-1 rounded">{elementNamesList}</span>
+                                </span>
+                            </CardDescription>
+                        </div>
+                         <Button onClick={handleAddFlow} size="sm">
+                            <Plus className="mr-2 h-4 w-4" /> Add Flow
+                        </Button>
+                    </div>
                 </CardHeader>
                 <CardContent>
                     <div className="space-y-4">

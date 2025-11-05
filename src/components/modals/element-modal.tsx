@@ -28,8 +28,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import type { UIElement } from "@/lib/types";
 import Image from "next/image";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
-import { useMemo, useState } from "react";
-import { Combobox } from "../ui/combobox";
+import { useState } from "react";
 
 const formSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
@@ -60,10 +59,6 @@ export default function ElementModal({ isOpen, setIsOpen, element, elements, mod
       mediaLink: element?.mediaLink || "",
     },
   });
-
-  const elementOptions = useMemo(() => {
-    return elements.map(el => ({ value: el.name, label: el.name }));
-  }, [elements]);
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
     onSave(values, element?.id);
@@ -122,17 +117,10 @@ export default function ElementModal({ isOpen, setIsOpen, element, elements, mod
                 control={form.control}
                 name="name"
                 render={({ field }) => (
-                  <FormItem className="flex flex-col">
+                  <FormItem>
                     <FormLabel>Name</FormLabel>
                     <FormControl>
-                      <Combobox
-                        options={elementOptions}
-                        value={field.value}
-                        onChange={(value) => field.onChange(value)}
-                        placeholder="Select or create new..."
-                        inputPlaceholder="Search elements..."
-                        emptyMessage="No element found. Type to create."
-                      />
+                      <Input placeholder="e.g. Login Page" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

@@ -153,11 +153,11 @@ export default function FlowModal({ isOpen, setIsOpen, flow, elements, flows, on
       <div className="flex items-center space-x-1">
         {onMove && (
           <>
-            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => onMove('up')} disabled={!canMoveUp}><ChevronsUp className="h-4 w-4" /></Button>
-            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => onMove('down')} disabled={!canMoveDown}><ChevronsDown className="h-4 w-4" /></Button>
+            <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={() => onMove('up')} disabled={!canMoveUp}><ChevronsUp className="h-4 w-4" /></Button>
+            <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={() => onMove('down')} disabled={!canMoveDown}><ChevronsDown className="h-4 w-4" /></Button>
           </>
         )}
-        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onAction}>{actionIcon}</Button>
+        <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={onAction}>{actionIcon}</Button>
       </div>
     </div>
   );
@@ -167,7 +167,6 @@ export default function FlowModal({ isOpen, setIsOpen, flow, elements, flows, on
         if (!open) {
             form.reset();
             setPaths([[]]);
-            setAvailableElements([]);
         }
         setIsOpen(open);
     }}>
@@ -245,7 +244,7 @@ export default function FlowModal({ isOpen, setIsOpen, flow, elements, flows, on
                             <span className="text-sm">{el.name}</span>
                             <div className="flex items-center space-x-1">
                                 {paths.map((_, pathIndex) => (
-                                  <Button key={pathIndex} variant="ghost" size="icon" className="h-6 w-6" title={`Add to Path ${pathIndex + 1}`} onClick={() => handleSelect(el, pathIndex)}>
+                                  <Button key={pathIndex} type="button" variant="ghost" size="icon" className="h-6 w-6" title={`Add to Path ${pathIndex + 1}`} onClick={() => handleSelect(el, pathIndex)}>
                                     <Badge variant="secondary">{pathIndex + 1}</Badge>
                                     <ArrowRight className="h-4 w-4 text-green-500 ml-1" />
                                   </Button>

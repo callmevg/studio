@@ -4,7 +4,7 @@ import React, { useMemo } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { Bug, FileJson, GitFork, Plus, Upload, Wand2 } from "lucide-react";
+import { Bug, FileJson, GitFork, Plus, Upload } from "lucide-react";
 import type { UIElement, UIFlow } from '@/lib/types';
 
 interface DashboardProps {
@@ -14,7 +14,6 @@ interface DashboardProps {
   onAddFlow: () => void;
   onExport: () => void;
   onImport: (event: React.ChangeEvent<HTMLInputElement>) => void;
-  onSuggestFlows: () => void;
 }
 
 export function Dashboard({
@@ -24,7 +23,6 @@ export function Dashboard({
   onAddFlow,
   onExport,
   onImport,
-  onSuggestFlows,
 }: DashboardProps) {
   const buggyElementsCount = useMemo(() => elements.filter(el => el.isBuggy).length, [elements]);
   const importInputRef = React.useRef<HTMLInputElement>(null);
@@ -88,15 +86,6 @@ export function Dashboard({
           accept=".json"
           onChange={onImport}
         />
-      </div>
-
-       <Separator />
-
-      <div className="space-y-2">
-        <h3 className="text-lg font-semibold">AI Tools</h3>
-        <Button onClick={onSuggestFlows} variant="outline" className="w-full justify-start">
-          <Wand2 className="mr-2 h-4 w-4" /> Suggest Flows
-        </Button>
       </div>
     </div>
   );

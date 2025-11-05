@@ -20,11 +20,7 @@ import { Header } from '@/components/header';
 import { Dashboard } from '@/components/dashboard';
 import ElementModal from '@/components/modals/element-modal';
 import FlowModal from '@/components/modals/flow-modal';
-import SuggestedFlowsModal from '@/components/modals/suggested-flows-modal';
-import ImportAnalysisModal from '@/components/modals/import-analysis-modal';
 import { useToast } from "@/hooks/use-toast";
-import { suggestFlowsFromElementNames } from '@/ai/flows/suggest-flows-from-element-names';
-import { importGraphDefinition } from '@/ai/flows/import-graph-definition';
 import { Skeleton } from '@/components/ui/skeleton';
 
 type ModalState<T> = { open: boolean; data?: T | null; mode?: 'add' | 'edit' | 'view' };
@@ -39,8 +35,6 @@ export default function Home() {
 
   const [elementModal, setElementModal] = useState<ModalState<UIElement>>({ open: false, mode: 'add' });
   const [flowModal, setFlowModal] = useState<ModalState<UIFlow>>({ open: false, mode: 'add' });
-  const [suggestedFlowsModal, setSuggestedFlowsModal] = useState<ModalState<{ suggestions: string[][] }>>({ open: false });
-  const [importAnalysisModal, setImportAnalysisModal] = useState<ModalState<{ analysis: string }>>({ open: false });
 
   useEffect(() => {
     signIn();
@@ -91,9 +85,6 @@ export default function Home() {
           await importDataFromFirebase(json);
           toast({ title: "Success", description: "Data imported successfully. The graph will update." });
 
-          const analysisResult = await importGraphDefinition({ graphDefinition: json });
-          setImportAnalysisModal({ open: true, data: { analysis: analysisResult.analysisResults } });
-
         } catch (error: any) {
           toast({ variant: "destructive", title: "Import Error", description: error.message });
         }
@@ -102,25 +93,6 @@ export default function Home() {
       event.target.value = ''; // Reset file input
     }
   };
-
-  const handleSuggestFlows = async () => {
-    if (elements.length < 2) {
-      toast({ variant: "destructive", title: "Not enough elements", description: "Need at least 2 elements to suggest flows." });
-      return;
-    }
-    try {
-      const elementNames = elements.map(el => el.name);
-      const result = await suggestFlowsFromElementNames({ elementNames });
-      if (result.flowSuggestions.length > 0) {
-        setSuggestedFlowsModal({ open: true, data: { suggestions: result.flowSuggestions } });
-      } else {
-        toast({ title: "No suggestions", description: "The AI couldn't find any new flow suggestions." });
-      }
-    } catch (error: any) {
-      toast({ variant: "destructive", title: "AI Error", description: "Could not generate flow suggestions." });
-    }
-  };
-
 
   return (
     <div className="flex flex-col h-screen">
@@ -133,7 +105,6 @@ export default function Home() {
           onAddFlow={() => setFlowModal({ open: true, data: null, mode: 'add' })}
           onExport={handleExportData}
           onImport={handleImportData}
-          onSuggestFlows={handleSuggestFlows}
         />
         <div className="flex-1 relative bg-background/50">
           {loading ? (
@@ -202,23 +173,6 @@ export default function Home() {
               toast({ variant: "destructive", title: "Error", description: error.message });
             }
           }}
-        />
-      )}
-      
-      {suggestedFlowsModal.open && suggestedFlowsModal.data && (
-        <SuggestedFlowsModal
-          isOpen={suggestedFlowsModal.open}
-          setIsOpen={(open) => setSuggestedFlowsModal({ ...suggestedFlowsModal, open })}
-          suggestions={suggestedFlowsModal.data.suggestions}
-          elements={elements}
-        />
-      )}
-
-      {importAnalysisModal.open && importAnalysisModal.data && (
-        <ImportAnalysisModal
-          isOpen={importAnalysisModal.open}
-          setIsOpen={(open) => setImportAnalysisModal({ ...importAnalysisModal, open })}
-          analysis={importAnalysisModal.data.analysis}
         />
       )}
     </div>

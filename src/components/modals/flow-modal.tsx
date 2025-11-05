@@ -30,11 +30,14 @@ import { ArrowLeft, ArrowRight, ChevronsDown, ChevronsUp, Plus, Trash2 } from "l
 import { deleteFlow } from "@/lib/localStorage";
 import { cn } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Separator } from "../ui/separator";
+import { Badge } from "../ui/badge";
 
 const formSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
   group: z.string().optional(),
-  elementIds: z.array(z.string()).min(1, { message: "Flow must have at least one element." }),
+  paths: z.array(z.array(z.string())).min(1, { message: "Flow must have at least one path." })
+    .refine(paths => paths.every(p => p.length > 0), { message: "All paths must have at least one element." }),
 });
 
 interface FlowModalProps {
@@ -50,7 +53,7 @@ interface FlowModalProps {
 export default function FlowModal({ isOpen, setIsOpen, flow, elements, flows, onSave, onAddNewElement }: FlowModalProps) {
   const { toast } = useToast();
   
-  const [selectedElements, setSelectedElements] = useState<UIElement[]>([]);
+  const [paths, setPaths] = useState<UIElement[][]>([]);
   const [availableElements, setAvailableElements] = useState<UIElement[]>([]);
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -58,7 +61,7 @@ export default function FlowModal({ isOpen, setIsOpen, flow, elements, flows, on
     defaultValues: {
       name: flow?.name || "",
       group: flow?.group || "",
-      elementIds: flow?.elementIds || [],
+      paths: flow?.paths || [[]],
     },
   });
 
@@ -69,40 +72,69 @@ export default function FlowModal({ isOpen, setIsOpen, flow, elements, flows, on
 
 
   useEffect(() => {
-    const initialSelected = flow ? flow.elementIds.map(id => elements.find(el => el.id === id)).filter(Boolean) as UIElement[] : [];
+    const initialPaths: UIElement[][] = flow?.paths ? 
+        flow.paths.map(path => path.map(id => elements.find(el => el.id === id)).filter(Boolean) as UIElement[]) 
+        : [[]];
+    
+    setPaths(initialPaths);
+    
+    const allSelectedIds = new Set(initialPaths.flat().map(el => el.id));
     const initialAvailable = elements
-      .filter(el => !initialSelected.some(sel => sel.id === el.id))
+      .filter(el => !allSelectedIds.has(el.id))
       .sort((a, b) => a.name.localeCompare(b.name));
-    setSelectedElements(initialSelected);
+
     setAvailableElements(initialAvailable);
-    form.setValue('elementIds', initialSelected.map(el => el.id));
+    
+    form.setValue('paths', initialPaths.map(p => p.map(el => el.id)));
     form.setValue('name', flow?.name || "");
     form.setValue('group', flow?.group || "");
   }, [flow, elements, form]);
 
-  const handleSelect = (element: UIElement) => {
-    const newAvailable = availableElements.filter(el => el.id !== element.id);
-    const newSelected = [...selectedElements, element];
+  useEffect(() => {
+    const allSelectedIds = new Set(paths.flat().map(el => el.id));
+    const newAvailable = elements
+        .filter(el => !allSelectedIds.has(el.id))
+        .sort((a, b) => a.name.localeCompare(b.name));
     setAvailableElements(newAvailable);
-    setSelectedElements(newSelected);
-    form.setValue('elementIds', newSelected.map(el => el.id));
+    form.setValue('paths', paths.map(p => p.map(el => el.id)));
+  }, [paths, elements, form]);
+
+  const handleSelect = (element: UIElement, pathIndex: number) => {
+    const newPaths = [...paths];
+    newPaths[pathIndex] = [...newPaths[pathIndex], element];
+    setPaths(newPaths);
+  };
+  
+  const handleDeselect = (element: UIElement, pathIndex: number, elementIndex: number) => {
+    const newPaths = [...paths];
+    newPaths[pathIndex] = newPaths[pathIndex].filter((_, i) => i !== elementIndex);
+    setPaths(newPaths);
   };
 
-  const handleDeselect = (element: UIElement) => {
-    const newSelected = selectedElements.filter(el => el.id !== element.id);
-    const newAvailable = [...availableElements, element].sort((a, b) => a.name.localeCompare(b.name));
-    setAvailableElements(newAvailable);
-    setSelectedElements(newSelected);
-    form.setValue('elementIds', newSelected.map(el => el.id));
+  const moveElement = (pathIndex: number, elementIndex: number, direction: 'up' | 'down') => {
+    const newPaths = [...paths];
+    const path = newPaths[pathIndex];
+    const targetIndex = direction === 'up' ? elementIndex - 1 : elementIndex + 1;
+    if (targetIndex >= 0 && targetIndex < path.length) {
+      [path[elementIndex], path[targetIndex]] = [path[targetIndex], path[elementIndex]];
+      setPaths(newPaths);
+    }
   };
-
-  const moveElement = (index: number, direction: 'up' | 'down') => {
-    const newSelected = [...selectedElements];
-    const targetIndex = direction === 'up' ? index - 1 : index + 1;
-    if (targetIndex >= 0 && targetIndex < newSelected.length) {
-      [newSelected[index], newSelected[targetIndex]] = [newSelected[targetIndex], newSelected[index]];
-      setSelectedElements(newSelected);
-      form.setValue('elementIds', newSelected.map(el => el.id));
+  
+  const addNewPath = () => {
+    setPaths([...paths, []]);
+  };
+  
+  const deletePath = (pathIndex: number) => {
+    if (paths.length > 1) {
+        const newPaths = paths.filter((_, i) => i !== pathIndex);
+        setPaths(newPaths);
+    } else {
+        toast({
+            variant: "destructive",
+            title: "Cannot Delete",
+            description: "A flow must have at least one path.",
+        });
     }
   };
 
@@ -141,15 +173,15 @@ export default function FlowModal({ isOpen, setIsOpen, flow, elements, flows, on
     <Dialog open={isOpen} onOpenChange={(open) => {
         if (!open) {
             form.reset();
-            setSelectedElements([]);
+            setPaths([[]]);
             setAvailableElements([]);
         }
         setIsOpen(open);
     }}>
-      <DialogContent className="sm:max-w-3xl">
+      <DialogContent className="sm:max-w-4xl">
         <DialogHeader>
           <DialogTitle>{flow ? 'Edit Flow' : 'Add New Flow'}</DialogTitle>
-          <DialogDescription>Define a sequence of UI elements to create a user flow.</DialogDescription>
+          <DialogDescription>Define a sequence of UI elements to create a user flow. A flow can have multiple paths or tributaries.</DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -204,35 +236,73 @@ export default function FlowModal({ isOpen, setIsOpen, flow, elements, flows, on
             </div>
             
             <FormItem>
-              <FormLabel>Flow Sequence</FormLabel>
+              <FormLabel>Flow Paths</FormLabel>
               <div className="grid grid-cols-2 gap-4">
-                <div className="border rounded-md p-2 space-y-1">
+                 <div className="border rounded-md p-2 space-y-1">
                   <div className="flex justify-between items-center px-2">
                     <h4 className="font-semibold text-sm">Available Elements</h4>
                     <Button type="button" variant="outline" size="sm" onClick={onAddNewElement}>
                       <Plus className="mr-2 h-4 w-4" /> Add New
                     </Button>
                   </div>
-                  <ScrollArea className="h-64">
+                  <ScrollArea className="h-96">
                     {availableElements.length > 0 ? (
-                        availableElements.map(el => <ElementItem key={el.id} element={el} onAction={() => handleSelect(el)} actionIcon={<ArrowRight className="h-4 w-4 text-green-500" />} />)
+                        availableElements.map(el => (
+                          <div key={el.id} className="flex items-center justify-between p-2 rounded-md hover:bg-accent/50">
+                            <span className="text-sm">{el.name}</span>
+                            <div className="flex items-center space-x-1">
+                                {paths.map((_, pathIndex) => (
+                                  <Button key={pathIndex} variant="ghost" size="icon" className="h-6 w-6" title={`Add to Path ${pathIndex + 1}`} onClick={() => handleSelect(el, pathIndex)}>
+                                    <Badge variant="secondary">{pathIndex + 1}</Badge>
+                                    <ArrowRight className="h-4 w-4 text-green-500 ml-1" />
+                                  </Button>
+                                ))}
+                            </div>
+                          </div>
+                        ))
                     ) : (
                         <p className="text-xs text-muted-foreground text-center p-4">No available elements.</p>
                     )}
                   </ScrollArea>
                 </div>
-                <div className="border rounded-md p-2 space-y-1">
-                   <h4 className="font-semibold text-center text-sm px-2">Selected Elements</h4>
-                  <ScrollArea className="h-64">
-                     {selectedElements.length > 0 ? (
-                        selectedElements.map((el, i) => <ElementItem key={el.id} element={el} onAction={() => handleDeselect(el)} actionIcon={<ArrowLeft className="h-4 w-4 text-red-500" />} onMove={(dir: 'up' | 'down') => moveElement(i, dir)} canMoveUp={i > 0} canMoveDown={i < selectedElements.length - 1} />)
-                     ) : (
-                        <p className="text-xs text-muted-foreground text-center p-4">Select elements from the left panel.</p>
-                     )}
+
+                <div className="border rounded-md p-2 space-y-2">
+                   <div className="flex justify-between items-center px-2">
+                     <h4 className="font-semibold text-sm">Selected Paths</h4>
+                     <Button type="button" variant="outline" size="sm" onClick={addNewPath}>
+                        <Plus className="mr-2 h-4 w-4" /> Add Path
+                    </Button>
+                   </div>
+                  <ScrollArea className="h-96 pr-4">
+                    {paths.map((path, pathIndex) => (
+                        <div key={pathIndex} className="mb-4 p-2 border rounded-md">
+                           <div className="flex justify-between items-center mb-2">
+                             <h5 className="font-semibold text-xs">Path {pathIndex + 1}</h5>
+                             <Button type="button" variant="destructive" size="icon" className="h-6 w-6" onClick={() => deletePath(pathIndex)} disabled={paths.length <= 1}>
+                                <Trash2 className="h-3 w-3" />
+                             </Button>
+                           </div>
+                            {path.length > 0 ? (
+                                path.map((el, i) => (
+                                    <ElementItem 
+                                        key={el.id} 
+                                        element={el} 
+                                        onAction={() => handleDeselect(el, pathIndex, i)} 
+                                        actionIcon={<ArrowLeft className="h-4 w-4 text-red-500" />} 
+                                        onMove={(dir: 'up' | 'down') => moveElement(pathIndex, i, dir)} 
+                                        canMoveUp={i > 0} 
+                                        canMoveDown={i < path.length - 1} 
+                                    />
+                                ))
+                            ) : (
+                                <p className="text-xs text-muted-foreground text-center p-2">Select elements from the left panel.</p>
+                            )}
+                        </div>
+                    ))}
                   </ScrollArea>
                 </div>
               </div>
-               <FormMessage className="pl-1">{form.formState.errors.elementIds?.message}</FormMessage>
+               <FormMessage className="pl-1">{form.formState.errors.paths?.message || form.formState.errors.paths?.root?.message}</FormMessage>
             </FormItem>
 
             <DialogFooter className={cn("pt-4", flow ? "sm:justify-between" : "sm:justify-end")}>

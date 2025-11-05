@@ -21,7 +21,14 @@ const saveElementsToStorage = (elements: UIElement[]) => {
 const getFlowsFromStorage = (): UIFlow[] => {
   if (typeof window === 'undefined') return [];
   const data = localStorage.getItem('flowverse-flows');
-  return data ? JSON.parse(data) : [];
+  // Backwards compatibility for old data structure
+  const flows = data ? JSON.parse(data) : [];
+  return flows.map((flow: any) => {
+    if (flow.elementIds && !flow.paths) {
+      return { ...flow, paths: [flow.elementIds], elementIds: undefined };
+    }
+    return flow;
+  });
 };
 
 const saveFlowsToStorage = (flows: UIFlow[]) => {
@@ -100,8 +107,8 @@ export const deleteElement = (id: string) => {
   const flows = getFlowsFromStorage();
   const updatedFlows = flows.map(flow => ({
     ...flow,
-    elementIds: flow.elementIds.filter(elId => elId !== id)
-  })).filter(flow => flow.elementIds.length > 0); // Optional: remove flows that become empty
+    paths: flow.paths.map(path => path.filter(elId => elId !== id)).filter(path => path.length > 0)
+  })).filter(flow => flow.paths.length > 0); // Optional: remove flows that become empty
   saveFlowsToStorage(updatedFlows);
   
   return Promise.resolve();
@@ -175,11 +182,20 @@ export const importData = async (jsonData: string) => {
         };
     });
 
-    const newFlows: UIFlow[] = flows.map((flow: any) => ({
-        ...flow,
-        id: new Date().getTime().toString() + Math.random(),
-        elementIds: flow.elementIds.map((oldId: string) => idMap[oldId]).filter(Boolean),
-    })).filter((flow: UIFlow) => flow.elementIds.length > 0);
+    const newFlows: UIFlow[] = flows.map((flow: any) => {
+        let paths: string[][];
+        if (flow.elementIds) { // Handle old format
+            paths = [flow.elementIds.map((oldId: string) => idMap[oldId]).filter(Boolean)];
+        } else {
+            paths = flow.paths.map((path: string[]) => path.map((oldId: string) => idMap[oldId]).filter(Boolean));
+        }
+
+        return {
+            ...flow,
+            id: new Date().getTime().toString() + Math.random(),
+            paths: paths.filter(path => path.length > 0),
+        }
+    }).filter((flow: UIFlow) => flow.paths.length > 0);
 
     saveElementsToStorage(newElements);
     saveFlowsToStorage(newFlows);
@@ -230,13 +246,23 @@ export const addSampleData = () => {
         // @ts-ignore
         createdAt: { toDate: () => new Date() }
     };
+     const forgotPasswordEl: UIElement = {
+        id: '5',
+        name: 'Forgot Password',
+        isBuggy: false,
+        bugDetails: '',
+        mediaLink: '',
+        // @ts-ignore
+        createdAt: { toDate: () => new Date() }
+    };
 
-    const sampleElements = [loginEl, dashboardEl, settingsEl, profileEl];
+
+    const sampleElements = [loginEl, dashboardEl, settingsEl, profileEl, forgotPasswordEl];
 
     const sampleFlows: UIFlow[] = [
-        { id: '101', name: 'User Login', elementIds: [loginEl.id, dashboardEl.id], group: "Onboarding" },
-        { id: '102', name: 'Profile Update', elementIds: [dashboardEl.id, settingsEl.id, profileEl.id], group: "User Management" },
-        { id: '103', name: 'View Settings', elementIds: [dashboardEl.id, settingsEl.id], group: "User Management" },
+        { id: '101', name: 'User Login', paths: [[loginEl.id, dashboardEl.id], [forgotPasswordEl.id, loginEl.id]], group: "Onboarding" },
+        { id: '102', name: 'Profile Update', paths: [[dashboardEl.id, settingsEl.id, profileEl.id]], group: "User Management" },
+        { id: '103', name: 'View Settings', paths: [[dashboardEl.id, settingsEl.id]], group: "User Management" },
     ];
     
     saveElementsToStorage(sampleElements);

@@ -89,7 +89,7 @@ export default function Home() {
         // This case can happen if flows exist but elements don't, which is unlikely but possible.
         // We still want to initialize sample data to have a consistent state.
     }
-    if (!dataInitialized.current && currentElements.length === 0 && currentFlows.length === 0) {
+    if (!dataInitialized.current && currentElements.length === 0 && (!currentFlows || currentFlows.length === 0)) {
         addSampleData();
         toast({ title: "Welcome!", description: "We've added some sample data to get you started." });
         dataInitialized.current = true;
@@ -177,12 +177,15 @@ export default function Home() {
     } else if (type === 'flows') {
         const updates = data.map(item => {
             const existing = flows.find(f => f.id === item.id);
-            const elementIds = item.elements.map((nameOrId: string) => {
-                const el = elements.find(e => e.name.toLowerCase() === nameOrId.toLowerCase().trim() || e.id === nameOrId);
-                return el ? el.id : null;
-            }).filter((id): id is string => id !== null);
 
-            if (elementIds.length === 0 && item.elements.length > 0) {
+             const paths = item.paths.map((path: string[]) => {
+                return path.map((nameOrId: string) => {
+                    const el = elements.find(e => e.name.toLowerCase() === nameOrId.toLowerCase().trim() || e.id === nameOrId);
+                    return el ? el.id : null;
+                }).filter((id): id is string => id !== null);
+            }).filter((path: string[]) => path.length > 0);
+
+            if (paths.length === 0 && item.paths.length > 0) {
                  toast({ variant: 'destructive', title: 'Flow Error', description: `Could not find elements for flow "${item.name}". Please check element names.` });
                  return Promise.resolve(); // Skip this one
             }
@@ -190,7 +193,7 @@ export default function Home() {
             const payload = {
                 name: item.name,
                 group: item.group || '',
-                elementIds: elementIds,
+                paths: paths,
             };
 
             if (existing) {

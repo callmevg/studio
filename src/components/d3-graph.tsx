@@ -15,7 +15,7 @@ const D3Graph: React.FC<D3GraphProps> = ({ elements, flows, onNodeClick }) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const simulationRef = useRef<d3.Simulation<d3.SimulationNodeDatum, undefined>>();
 
-  const validFlows = useMemo(() => flows.filter(f => f && f.id && f.elementIds), [flows]);
+  const validFlows = useMemo(() => flows.filter(f => f && f.id && f.paths && f.paths.length > 0), [flows]);
   
   const sanitizeId = (id: string) => id.replace(/[.\s]/g, '-');
 
@@ -28,7 +28,13 @@ const D3Graph: React.FC<D3GraphProps> = ({ elements, flows, onNodeClick }) => {
     const counts: Record<string, number> = {};
     elements.forEach(el => counts[el.id] = 0);
     validFlows.forEach(flow => {
-        flow.elementIds.forEach(elementId => {
+        const uniqueElementsInFlow = new Set<string>();
+        flow.paths.forEach(path => {
+            path.forEach(elementId => {
+                uniqueElementsInFlow.add(elementId);
+            });
+        });
+        uniqueElementsInFlow.forEach(elementId => {
             if (counts[elementId] !== undefined) {
                 counts[elementId]++;
             }
@@ -81,17 +87,19 @@ const D3Graph: React.FC<D3GraphProps> = ({ elements, flows, onNodeClick }) => {
     
     const links: any[] = [];
     validFlows.forEach(flow => {
-      if (!flow.elementIds) return;
-      for (let i = 0; i < flow.elementIds.length - 1; i++) {
-        if (nodeIds.has(flow.elementIds[i]) && nodeIds.has(flow.elementIds[i+1])) {
-            links.push({
-              source: flow.elementIds[i],
-              target: flow.elementIds[i + 1],
-              flowId: flow.id,
-              flowName: flow.name
-            });
+      if (!flow.paths) return;
+      flow.paths.forEach(path => {
+        for (let i = 0; i < path.length - 1; i++) {
+          if (nodeIds.has(path[i]) && nodeIds.has(path[i+1])) {
+              links.push({
+                source: path[i],
+                target: path[i + 1],
+                flowId: flow.id,
+                flowName: flow.name
+              });
+          }
         }
-      }
+      });
     });
 
     const linkGroups: { [key: string]: any[] } = {};

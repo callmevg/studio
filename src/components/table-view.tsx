@@ -9,6 +9,7 @@ import { UIElement, UIFlow } from '@/lib/types';
 import { Checkbox } from './ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { Plus } from 'lucide-react';
+import { Textarea } from './ui/textarea';
 
 interface TableViewProps {
     elements: UIElement[];
@@ -28,7 +29,7 @@ export function TableView({ elements, flows, onBulkUpdate }: TableViewProps) {
     useEffect(() => {
         setEditableFlows(flows.map(f => ({
             ...f,
-            elementIds: [...f.elementIds]
+            paths: [...f.paths]
         })));
     }, [flows]);
     
@@ -44,10 +45,12 @@ export function TableView({ elements, flows, onBulkUpdate }: TableViewProps) {
         );
     };
 
-    const handleFlowElementsChange = (id: string, value: string) => {
-        const elementNames = value.split(',').map(name => name.trim());
+    const handleFlowPathsChange = (id: string, value: string) => {
+        const pathsAsString = value.split(';').map(p => p.trim());
+        const pathsAsElementNames = pathsAsString.map(p => p.split(',').map(name => name.trim()));
         setEditableFlows(prev =>
-            prev.map(flow => (flow.id === id ? { ...flow, elementIds: elementNames } : flow))
+            // @ts-ignore
+            prev.map(flow => (flow.id === id ? { ...flow, paths: pathsAsElementNames } : flow))
         );
     };
 
@@ -64,16 +67,18 @@ export function TableView({ elements, flows, onBulkUpdate }: TableViewProps) {
                 onBulkUpdate('elements', elementsToUpdate);
             } else { // flows
                 const flowsToUpdate = editableFlows.map(flow => {
-                    const elementIds = flow.elementIds.map(name => {
-                        const element = elements.find(el => el.name.toLowerCase() === name.toLowerCase());
-                        return element ? element.id : name; // Keep name if not found, let parent handle it
+                     const paths = flow.paths.map((path) => {
+                        return path.map(name => {
+                            const element = elements.find(el => el.name.toLowerCase() === name.toLowerCase());
+                            return element ? element.id : name; // Keep name if not found, let parent handle it
+                        });
                     });
 
                     return {
                         id: flow.id,
                         name: flow.name,
                         group: flow.group || '',
-                        elements: elementIds,
+                        paths: paths,
                     };
                 });
                  onBulkUpdate('flows', flowsToUpdate);
@@ -102,7 +107,7 @@ export function TableView({ elements, flows, onBulkUpdate }: TableViewProps) {
         const newFlow: UIFlow = {
             id: newId,
             name: 'New Flow',
-            elementIds: [],
+            paths: [[]],
             group: ''
         };
         setEditableFlows(prev => [...prev, newFlow]);
@@ -169,7 +174,7 @@ export function TableView({ elements, flows, onBulkUpdate }: TableViewProps) {
                 <CardHeader className="pb-4">
                     <CardTitle>Flows</CardTitle>
                         <CardDescription>
-                        View and edit your user flows. Use comma-separated names for elements.
+                        View and edit your user flows. Use comma-separated names for elements within a path, and semicolon-separated for different paths.
                         <br />
                         <span className="text-xs text-muted-foreground">
                             Available elements: <span className="font-mono text-xs bg-muted p-1 rounded">{elementNamesList}</span>
@@ -183,7 +188,7 @@ export function TableView({ elements, flows, onBulkUpdate }: TableViewProps) {
                                 <TableRow>
                                     <TableHead>Name</TableHead>
                                     <TableHead>Group</TableHead>
-                                    <TableHead>Elements (comma-separated)</TableHead>
+                                    <TableHead>Paths (e.g. A, B, C; X, B)</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -204,10 +209,11 @@ export function TableView({ elements, flows, onBulkUpdate }: TableViewProps) {
                                             />
                                         </TableCell>
                                         <TableCell className="p-2">
-                                            <Input
-                                                value={flow.elementIds.map(id => elements.find(el => el.id === id)?.name || id).join(', ')}
-                                                onChange={(e) => handleFlowElementsChange(flow.id, e.target.value)}
+                                            <Textarea
+                                                value={flow.paths.map(path => path.map(id => elements.find(el => el.id === id)?.name || id).join(', ')).join('; ')}
+                                                onChange={(e) => handleFlowPathsChange(flow.id, e.target.value)}
                                                 className="h-8"
+                                                rows={1}
                                             />
                                         </TableCell>
                                     </TableRow>

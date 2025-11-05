@@ -16,6 +16,6 @@ export interface UIElement {
 export interface UIFlow {
   id: string;
   name: string;
-  elementIds: string[];
+  paths: string[][];
   group?: string;
 }

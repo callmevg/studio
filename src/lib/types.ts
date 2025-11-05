@@ -13,9 +13,9 @@ export interface UIElement {
   fy?: number | null; // For D3 fixed position
 }
 
-export interface UIFlow {
+export interface UIScenario {
   id: string;
   name: string;
-  paths: string[][];
+  methods: string[][];
   group?: string;
 }

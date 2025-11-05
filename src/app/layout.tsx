@@ -4,8 +4,8 @@ import { ThemeProvider } from "@/components/theme-provider";
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'FlowVerse',
-  description: 'Visualize and manage your application flows.',
+  title: 'ScenarioVerse',
+  description: 'Visualize and manage your application scenarios.',
 };
 
 export default function RootLayout({

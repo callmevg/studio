@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { UIElement, UIFlow } from '@/lib/types';
+import { UIElement, UIScenario } from '@/lib/types';
 import { Checkbox } from './ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { Plus } from 'lucide-react';
@@ -13,25 +13,25 @@ import { Textarea } from './ui/textarea';
 
 interface TableViewProps {
     elements: UIElement[];
-    flows: UIFlow[];
-    onBulkUpdate: (type: 'elements' | 'flows', data: any[]) => Promise<void>;
+    scenarios: UIScenario[];
+    onBulkUpdate: (type: 'elements' | 'scenarios', data: any[]) => Promise<void>;
 }
 
-export function TableView({ elements, flows, onBulkUpdate }: TableViewProps) {
+export function TableView({ elements, scenarios, onBulkUpdate }: TableViewProps) {
     const { toast } = useToast();
     const [editableElements, setEditableElements] = useState(elements);
-    const [editableFlows, setEditableFlows] = useState(flows);
+    const [editableScenarios, setEditableScenarios] = useState(scenarios);
 
     useEffect(() => {
         setEditableElements(elements.map(e => ({...e})));
     }, [elements]);
 
     useEffect(() => {
-        setEditableFlows(flows.map(f => ({
+        setEditableScenarios(scenarios.map(f => ({
             ...f,
-            paths: [...f.paths]
+            methods: [...f.methods]
         })));
-    }, [flows]);
+    }, [scenarios]);
     
     const handleElementChange = (id: string, field: keyof UIElement, value: string | boolean) => {
         setEditableElements(prev =>
@@ -39,22 +39,22 @@ export function TableView({ elements, flows, onBulkUpdate }: TableViewProps) {
         );
     };
 
-    const handleFlowChange = (id: string, field: keyof UIFlow, value: string) => {
-        setEditableFlows(prev =>
-            prev.map(flow => (flow.id === id ? { ...flow, [field]: value } : flow))
+    const handleScenarioChange = (id: string, field: keyof UIScenario, value: string) => {
+        setEditableScenarios(prev =>
+            prev.map(scenario => (scenario.id === id ? { ...scenario, [field]: value } : scenario))
         );
     };
 
-    const handleFlowPathsChange = (id: string, value: string) => {
-        const pathsAsString = value.split(';').map(p => p.trim());
-        const pathsAsElementNames = pathsAsString.map(p => p.split(',').map(name => name.trim()));
-        setEditableFlows(prev =>
+    const handleScenarioMethodsChange = (id: string, value: string) => {
+        const methodsAsString = value.split(';').map(p => p.trim());
+        const methodsAsElementNames = methodsAsString.map(p => p.split(',').map(name => name.trim()));
+        setEditableScenarios(prev =>
             // @ts-ignore
-            prev.map(flow => (flow.id === id ? { ...flow, paths: pathsAsElementNames } : flow))
+            prev.map(scenario => (scenario.id === id ? { ...scenario, methods: methodsAsElementNames } : scenario))
         );
     };
 
-    const handleSaveChanges = (type: 'elements' | 'flows') => {
+    const handleSaveChanges = (type: 'elements' | 'scenarios') => {
         try {
             if (type === 'elements') {
                 const elementsToUpdate = editableElements.map(el => ({
@@ -65,23 +65,23 @@ export function TableView({ elements, flows, onBulkUpdate }: TableViewProps) {
                     mediaLink: el.mediaLink || ''
                 }));
                 onBulkUpdate('elements', elementsToUpdate);
-            } else { // flows
-                const flowsToUpdate = editableFlows.map(flow => {
-                     const paths = flow.paths.map((path) => {
-                        return path.map(name => {
+            } else { // scenarios
+                const scenariosToUpdate = editableScenarios.map(scenario => {
+                     const methods = scenario.methods.map((method) => {
+                        return method.map(name => {
                             const element = elements.find(el => el.name.toLowerCase() === name.toLowerCase());
                             return element ? element.id : name; // Keep name if not found, let parent handle it
                         });
                     });
 
                     return {
-                        id: flow.id,
-                        name: flow.name,
-                        group: flow.group || '',
-                        paths: paths,
+                        id: scenario.id,
+                        name: scenario.name,
+                        group: scenario.group || '',
+                        methods: methods,
                     };
                 });
-                 onBulkUpdate('flows', flowsToUpdate);
+                 onBulkUpdate('scenarios', scenariosToUpdate);
             }
         } catch (error) {
             toast({ variant: 'destructive', title: 'Save Error', description: 'Failed to save changes.' });
@@ -102,15 +102,15 @@ export function TableView({ elements, flows, onBulkUpdate }: TableViewProps) {
         setEditableElements(prev => [...prev, newElement]);
     };
 
-    const handleAddFlow = () => {
+    const handleAddScenario = () => {
         const newId = `new-${Date.now()}`;
-        const newFlow: UIFlow = {
+        const newScenario: UIScenario = {
             id: newId,
-            name: 'New Flow',
-            paths: [[]],
+            name: 'New Scenario',
+            methods: [[]],
             group: ''
         };
-        setEditableFlows(prev => [...prev, newFlow]);
+        setEditableScenarios(prev => [...prev, newScenario]);
     };
 
 
@@ -172,9 +172,9 @@ export function TableView({ elements, flows, onBulkUpdate }: TableViewProps) {
 
             <Card>
                 <CardHeader className="pb-4">
-                    <CardTitle>Flows</CardTitle>
+                    <CardTitle>Scenarios</CardTitle>
                         <CardDescription>
-                        View and edit your user flows. Use comma-separated names for elements within a path, and semicolon-separated for different paths.
+                        View and edit your user scenarios. Use comma-separated names for elements within a method, and semicolon-separated for different methods.
                         <br />
                         <span className="text-xs text-muted-foreground">
                             Available elements: <span className="font-mono text-xs bg-muted p-1 rounded">{elementNamesList}</span>
@@ -188,30 +188,30 @@ export function TableView({ elements, flows, onBulkUpdate }: TableViewProps) {
                                 <TableRow>
                                     <TableHead>Name</TableHead>
                                     <TableHead>Group</TableHead>
-                                    <TableHead>Paths (e.g. A, B, C; X, B)</TableHead>
+                                    <TableHead>Methods (e.g. A, B, C; X, B)</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {editableFlows.map(flow => (
-                                    <TableRow key={flow.id}>
+                                {editableScenarios.map(scenario => (
+                                    <TableRow key={scenario.id}>
                                         <TableCell className="p-2">
                                             <Input
-                                                value={flow.name}
-                                                onChange={(e) => handleFlowChange(flow.id, 'name', e.target.value)}
+                                                value={scenario.name}
+                                                onChange={(e) => handleScenarioChange(scenario.id, 'name', e.target.value)}
                                                 className="h-8"
                                             />
                                         </TableCell>
                                         <TableCell className="p-2">
                                             <Input
-                                                value={flow.group || ''}
-                                                onChange={(e) => handleFlowChange(flow.id, 'group', e.target.value)}
+                                                value={scenario.group || ''}
+                                                onChange={(e) => handleScenarioChange(scenario.id, 'group', e.target.value)}
                                                 className="h-8"
                                             />
                                         </TableCell>
                                         <TableCell className="p-2">
                                             <Textarea
-                                                value={flow.paths.map(path => path.map(id => elements.find(el => el.id === id)?.name || id).join(', ')).join('; ')}
-                                                onChange={(e) => handleFlowPathsChange(flow.id, e.target.value)}
+                                                value={scenario.methods.map(method => method.map(id => elements.find(el => el.id === id)?.name || id).join(', ')).join('; ')}
+                                                onChange={(e) => handleScenarioMethodsChange(scenario.id, e.target.value)}
                                                 className="h-8"
                                                 rows={1}
                                             />
@@ -223,10 +223,10 @@ export function TableView({ elements, flows, onBulkUpdate }: TableViewProps) {
                     </div>
                 </CardContent>
                  <CardFooter className="flex justify-between pt-4">
-                    <Button onClick={handleAddFlow} variant="outline">
-                        <Plus className="mr-2 h-4 w-4" /> Add Flow
+                    <Button onClick={handleAddScenario} variant="outline">
+                        <Plus className="mr-2 h-4 w-4" /> Add Scenario
                     </Button>
-                    <Button onClick={() => handleSaveChanges('flows')}>Save Flow Changes</Button>
+                    <Button onClick={() => handleSaveChanges('scenarios')}>Save Scenario Changes</Button>
                 </CardFooter>
             </Card>
         </div>

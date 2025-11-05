@@ -126,6 +126,11 @@ export default function Home() {
       }
     }
   };
+
+  const handleAddNewElementFromFlow = () => {
+    setFlowModal({ ...flowModal, open: false });
+    setElementModal({ open: true, data: null, mode: 'add' });
+  };
   
   const renderContent = () => {
     if (loading && elements.length === 0) {
@@ -220,6 +225,7 @@ export default function Home() {
               toast({ variant: "destructive", title: "Error", description: error.message });
             }
           }}
+          onAddNewElement={handleAddNewElementFromFlow}
         />
       )}
     </div>

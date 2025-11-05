@@ -26,7 +26,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import type { UIElement, UIFlow } from "@/lib/types";
 import { useEffect, useState } from "react";
-import { ArrowLeft, ArrowRight, ChevronsDown, ChevronsUp, Trash2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, ChevronsDown, ChevronsUp, Plus, Trash2 } from "lucide-react";
 import { deleteFlow } from "@/lib/localStorage";
 import { cn } from "@/lib/utils";
 
@@ -42,9 +42,10 @@ interface FlowModalProps {
   flow?: UIFlow | null;
   elements: UIElement[];
   onSave: (data: z.infer<typeof formSchema>, id?: string) => Promise<void>;
+  onAddNewElement: () => void;
 }
 
-export default function FlowModal({ isOpen, setIsOpen, flow, elements, onSave }: FlowModalProps) {
+export default function FlowModal({ isOpen, setIsOpen, flow, elements, onSave, onAddNewElement }: FlowModalProps) {
   const { toast } = useToast();
   
   const [selectedElements, setSelectedElements] = useState<UIElement[]>([]);
@@ -173,7 +174,12 @@ export default function FlowModal({ isOpen, setIsOpen, flow, elements, onSave }:
               <FormLabel>Flow Sequence</FormLabel>
               <div className="grid grid-cols-2 gap-4">
                 <div className="border rounded-md p-2 space-y-1">
-                  <h4 className="font-semibold text-center text-sm">Available Elements</h4>
+                  <div className="flex justify-between items-center">
+                    <h4 className="font-semibold text-center text-sm">Available Elements</h4>
+                    <Button type="button" variant="outline" size="sm" onClick={onAddNewElement}>
+                      <Plus className="mr-2 h-4 w-4" /> Add New
+                    </Button>
+                  </div>
                   <ScrollArea className="h-64">
                     {availableElements.map(el => <ElementItem key={el.id} element={el} onAction={() => handleSelect(el)} actionIcon={<ArrowRight className="h-4 w-4 text-green-500" />} />)}
                   </ScrollArea>

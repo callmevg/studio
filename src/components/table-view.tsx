@@ -1,7 +1,7 @@
 
 "use client";
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -112,124 +112,116 @@ export function TableView({ elements, flows, onBulkUpdate }: TableViewProps) {
     const elementNamesList = elements.map(e => e.name).join(', ');
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-4">
             <Card>
-                <CardHeader>
-                    <div className="flex justify-between items-center">
-                        <div>
-                            <CardTitle>Elements</CardTitle>
-                            <CardDescription>View and edit your UI elements directly in the table.</CardDescription>
-                        </div>
-                        <Button onClick={handleAddElement} size="sm">
-                            <Plus className="mr-2 h-4 w-4" /> Add Element
-                        </Button>
-                    </div>
+                <CardHeader className="pb-4">
+                    <CardTitle>Elements</CardTitle>
+                    <CardDescription>View and edit your UI elements directly in the table.</CardDescription>
                 </CardHeader>
-                <CardContent>
-                    <div className="space-y-4">
-                        <div className="rounded-md border">
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Name</TableHead>
-                                        <TableHead className="w-[100px]">Is Buggy?</TableHead>
-                                        <TableHead>Bug Details</TableHead>
+                <CardContent className="p-0">
+                    <div className="rounded-md border">
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Name</TableHead>
+                                    <TableHead className="w-[100px]">Is Buggy?</TableHead>
+                                    <TableHead>Bug Details</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {editableElements.map(el => (
+                                    <TableRow key={el.id}>
+                                        <TableCell className="p-2">
+                                            <Input
+                                                value={el.name}
+                                                onChange={(e) => handleElementChange(el.id, 'name', e.target.value)}
+                                                className="h-8"
+                                            />
+                                        </TableCell>
+                                        <TableCell className="text-center p-2">
+                                            <Checkbox
+                                                checked={el.isBuggy}
+                                                onCheckedChange={(checked) => handleElementChange(el.id, 'isBuggy', !!checked)}
+                                            />
+                                        </TableCell>
+                                        <TableCell className="p-2">
+                                            <Input
+                                                value={el.bugDetails}
+                                                onChange={(e) => handleElementChange(el.id, 'bugDetails', e.target.value)}
+                                                className="h-8"
+                                            />
+                                        </TableCell>
                                     </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {editableElements.map(el => (
-                                        <TableRow key={el.id}>
-                                            <TableCell>
-                                                <Input
-                                                    value={el.name}
-                                                    onChange={(e) => handleElementChange(el.id, 'name', e.target.value)}
-                                                    className="h-8"
-                                                />
-                                            </TableCell>
-                                            <TableCell className="text-center">
-                                                <Checkbox
-                                                    checked={el.isBuggy}
-                                                    onCheckedChange={(checked) => handleElementChange(el.id, 'isBuggy', !!checked)}
-                                                />
-                                            </TableCell>
-                                            <TableCell>
-                                                <Input
-                                                    value={el.bugDetails}
-                                                    onChange={(e) => handleElementChange(el.id, 'bugDetails', e.target.value)}
-                                                    className="h-8"
-                                                />
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        </div>
-                        <Button onClick={() => handleSaveChanges('elements')}>Save Element Changes</Button>
+                                ))}
+                            </TableBody>
+                        </Table>
                     </div>
                 </CardContent>
+                <CardFooter className="flex justify-between pt-4">
+                     <Button onClick={handleAddElement} variant="outline">
+                        <Plus className="mr-2 h-4 w-4" /> Add Element
+                    </Button>
+                    <Button onClick={() => handleSaveChanges('elements')}>Save Element Changes</Button>
+                </CardFooter>
             </Card>
 
             <Card>
-                <CardHeader>
-                    <div className="flex justify-between items-center">
-                        <div>
-                            <CardTitle>Flows</CardTitle>
-                             <CardDescription>
-                                View and edit your user flows. Use comma-separated names for elements.
-                                <br />
-                                <span className="text-xs text-muted-foreground">
-                                    Available elements: <span className="font-mono text-xs bg-muted p-1 rounded">{elementNamesList}</span>
-                                </span>
-                            </CardDescription>
-                        </div>
-                         <Button onClick={handleAddFlow} size="sm">
-                            <Plus className="mr-2 h-4 w-4" /> Add Flow
-                        </Button>
-                    </div>
+                <CardHeader className="pb-4">
+                    <CardTitle>Flows</CardTitle>
+                        <CardDescription>
+                        View and edit your user flows. Use comma-separated names for elements.
+                        <br />
+                        <span className="text-xs text-muted-foreground">
+                            Available elements: <span className="font-mono text-xs bg-muted p-1 rounded">{elementNamesList}</span>
+                        </span>
+                    </CardDescription>
                 </CardHeader>
-                <CardContent>
-                    <div className="space-y-4">
-                        <div className="rounded-md border">
-                             <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Name</TableHead>
-                                        <TableHead>Group</TableHead>
-                                        <TableHead>Elements (comma-separated)</TableHead>
+                <CardContent className="p-0">
+                    <div className="rounded-md border">
+                            <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Name</TableHead>
+                                    <TableHead>Group</TableHead>
+                                    <TableHead>Elements (comma-separated)</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {editableFlows.map(flow => (
+                                    <TableRow key={flow.id}>
+                                        <TableCell className="p-2">
+                                            <Input
+                                                value={flow.name}
+                                                onChange={(e) => handleFlowChange(flow.id, 'name', e.target.value)}
+                                                className="h-8"
+                                            />
+                                        </TableCell>
+                                        <TableCell className="p-2">
+                                            <Input
+                                                value={flow.group || ''}
+                                                onChange={(e) => handleFlowChange(flow.id, 'group', e.target.value)}
+                                                className="h-8"
+                                            />
+                                        </TableCell>
+                                        <TableCell className="p-2">
+                                            <Input
+                                                value={flow.elementIds.map(id => elements.find(el => el.id === id)?.name || id).join(', ')}
+                                                onChange={(e) => handleFlowElementsChange(flow.id, e.target.value)}
+                                                className="h-8"
+                                            />
+                                        </TableCell>
                                     </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {editableFlows.map(flow => (
-                                        <TableRow key={flow.id}>
-                                            <TableCell>
-                                                <Input
-                                                    value={flow.name}
-                                                    onChange={(e) => handleFlowChange(flow.id, 'name', e.target.value)}
-                                                    className="h-8"
-                                                />
-                                            </TableCell>
-                                            <TableCell>
-                                                <Input
-                                                    value={flow.group || ''}
-                                                    onChange={(e) => handleFlowChange(flow.id, 'group', e.target.value)}
-                                                    className="h-8"
-                                                />
-                                            </TableCell>
-                                            <TableCell>
-                                                <Input
-                                                    value={flow.elementIds.map(id => elements.find(el => el.id === id)?.name || id).join(', ')}
-                                                    onChange={(e) => handleFlowElementsChange(flow.id, e.target.value)}
-                                                    className="h-8"
-                                                />
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        </div>
-                         <Button onClick={() => handleSaveChanges('flows')}>Save Flow Changes</Button>
+                                ))}
+                            </TableBody>
+                        </Table>
                     </div>
                 </CardContent>
+                 <CardFooter className="flex justify-between pt-4">
+                    <Button onClick={handleAddFlow} variant="outline">
+                        <Plus className="mr-2 h-4 w-4" /> Add Flow
+                    </Button>
+                    <Button onClick={() => handleSaveChanges('flows')}>Save Flow Changes</Button>
+                </CardFooter>
             </Card>
         </div>
     );

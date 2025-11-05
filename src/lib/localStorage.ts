@@ -1,7 +1,7 @@
 
 "use client";
 
-import type { UIElement, UIFlow } from './types';
+import type { UIElement, UIScenario } from './types';
 import { Timestamp } from "firebase/firestore"; // Still needed for type consistency until fully removed.
 
 // --- Helper Functions ---
@@ -18,15 +18,25 @@ const saveElementsToStorage = (elements: UIElement[]) => {
   window.dispatchEvent(new Event('storage'));
 };
 
-const getFlowsFromStorage = (): UIFlow[] => {
+const getScenariosFromStorage = (): UIScenario[] => {
   if (typeof window === 'undefined') return [];
-  const data = localStorage.getItem('flowverse-flows');
-  return data ? JSON.parse(data) : [];
+  const data = localStorage.getItem('flowverse-flows'); // Use 'flows' for backward compatibility
+  // Backwards compatibility for old data structure
+  const scenarios = data ? JSON.parse(data) : [];
+  return scenarios.map((scenario: any) => {
+    if (scenario.elementIds && !scenario.methods) {
+      return { ...scenario, methods: [scenario.elementIds], elementIds: undefined };
+    }
+    if (scenario.paths && !scenario.methods) { // Still handle 'paths' for migration
+      return { ...scenario, methods: scenario.paths, paths: undefined };
+    }
+    return scenario;
+  });
 };
 
-const saveFlowsToStorage = (flows: UIFlow[]) => {
+const saveScenariosToStorage = (scenarios: UIScenario[]) => {
     if (typeof window === 'undefined') return;
-  localStorage.setItem('flowverse-flows', JSON.stringify(flows));
+  localStorage.setItem('flowverse-flows', JSON.stringify(scenarios)); // Use 'flows' for backward compatibility
   window.dispatchEvent(new Event('storage'));
 };
 
@@ -55,17 +65,17 @@ export const getElements = (callback: (elements: UIElement[]) => void) => {
     };
 };
 
-export const getFlows = (callback: (flows: UIFlow[]) => void) => {
+export const getScenarios = (callback: (scenarios: UIScenario[]) => void) => {
     if (typeof window === 'undefined') {
         callback([]);
         return () => {};
     }
     const handleStorageChange = () => {
-        callback(getFlowsFromStorage());
+        callback(getScenariosFromStorage());
     };
 
     window.addEventListener('storage', handleStorageChange);
-    callback(getFlowsFromStorage()); // Initial call
+    callback(getScenariosFromStorage()); // Initial call
 
     return () => {
         window.removeEventListener('storage', handleStorageChange);
@@ -96,42 +106,42 @@ export const deleteElement = (id: string) => {
   const updatedElements = elements.filter(el => el.id !== id);
   saveElementsToStorage(updatedElements);
 
-  // Also remove this element from any flows that use it
-  const flows = getFlowsFromStorage();
-  const updatedFlows = flows.map(flow => ({
-    ...flow,
-    elementIds: flow.elementIds.filter(elId => elId !== id)
-  })).filter(flow => flow.elementIds.length > 0); // Optional: remove flows that become empty
-  saveFlowsToStorage(updatedFlows);
+  // Also remove this element from any scenarios that use it
+  const scenarios = getScenariosFromStorage();
+  const updatedScenarios = scenarios.map(scenario => ({
+    ...scenario,
+    methods: scenario.methods.map(method => method.filter(elId => elId !== id)).filter(method => method.length > 0)
+  })).filter(scenario => scenario.methods.length > 0); // Optional: remove scenarios that become empty
+  saveScenariosToStorage(updatedScenarios);
   
   return Promise.resolve();
 };
 
-export const addFlow = (flowData: Omit<UIFlow, 'id'>) => {
-  const flows = getFlowsFromStorage();
-  const newFlow: UIFlow = {
-    ...flowData,
+export const addScenario = (scenarioData: Omit<UIScenario, 'id'>) => {
+  const scenarios = getScenariosFromStorage();
+  const newScenario: UIScenario = {
+    ...scenarioData,
     id: new Date().getTime().toString(),
   };
-  saveFlowsToStorage([...flows, newFlow]);
+  saveScenariosToStorage([...scenarios, newScenario]);
   return Promise.resolve();
 };
 
-export const updateFlow = (id: string, flowData: Partial<Omit<UIFlow, 'id'>>) => {
-  const flows = getFlowsFromStorage();
-  const updatedFlows = flows.map(f => f.id === id ? { ...f, ...flowData } : f);
-  saveFlowsToStorage(updatedFlows);
+export const updateScenario = (id: string, scenarioData: Partial<Omit<UIScenario, 'id'>>) => {
+  const scenarios = getScenariosFromStorage();
+  const updatedScenarios = scenarios.map(f => f.id === id ? { ...f, ...scenarioData } : f);
+  saveScenariosToStorage(updatedScenarios);
   return Promise.resolve();
 };
 
-export const deleteFlow = (id: string) => {
-  const flows = getFlowsFromStorage();
-  const updatedFlows = flows.filter(f => f.id !== id);
-  saveFlowsToStorage(updatedFlows);
+export const deleteScenario = (id: string) => {
+  const scenarios = getScenariosFromStorage();
+  const updatedScenarios = scenarios.filter(f => f.id !== id);
+  saveScenariosToStorage(updatedScenarios);
   return Promise.resolve();
 };
 
-export const exportData = (elements: UIElement[], flows: UIFlow[]) => {
+export const exportData = (elements: UIElement[], scenarios: UIScenario[]) => {
     const serializableElements = elements.map(({ x, y, fx, fy, ...el }) => {
         const { createdAt, ...rest } = el;
         // @ts-ignore
@@ -141,14 +151,14 @@ export const exportData = (elements: UIElement[], flows: UIFlow[]) => {
 
     const data = {
         elements: serializableElements,
-        flows: flows,
+        flows: scenarios, // Use 'flows' on export for backward compatibility
     };
 
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'flowverse-data.json';
+    a.download = 'scenarioverse-data.json';
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -156,14 +166,18 @@ export const exportData = (elements: UIElement[], flows: UIFlow[]) => {
 };
 
 export const importData = async (jsonData: string) => {
-    const { elements, flows } = JSON.parse(jsonData);
+    const { elements, scenarios, flows } = JSON.parse(jsonData);
 
-    if (!Array.isArray(elements) || !Array.isArray(flows)) {
+    const importedElements = elements || [];
+    const importedScenarios = scenarios || flows || [];
+
+
+    if (!Array.isArray(importedElements) || !Array.isArray(importedScenarios)) {
         throw new Error("Invalid JSON format");
     }
 
     const idMap: { [key: string]: string } = {};
-    const newElements: UIElement[] = elements.map((el: any) => {
+    const newElements: UIElement[] = importedElements.map((el: any) => {
         const oldId = el.id;
         const newId = new Date().getTime().toString() + Math.random();
         idMap[oldId] = newId;
@@ -175,14 +189,26 @@ export const importData = async (jsonData: string) => {
         };
     });
 
-    const newFlows: UIFlow[] = flows.map((flow: any) => ({
-        ...flow,
-        id: new Date().getTime().toString() + Math.random(),
-        elementIds: flow.elementIds.map((oldId: string) => idMap[oldId]).filter(Boolean),
-    })).filter((flow: UIFlow) => flow.elementIds.length > 0);
+    const newScenarios: UIScenario[] = importedScenarios.map((scenario: any) => {
+        let methods: string[][];
+        // Handle all possible legacy formats ('elementIds', 'paths') and the current format ('methods')
+        const sourceMethods = scenario.methods || scenario.paths || (scenario.elementIds ? [scenario.elementIds] : []);
+        
+        methods = (sourceMethods || []).map((method: string[]) => 
+            method.map((oldId: string) => idMap[oldId]).filter(Boolean)
+        );
 
+        return {
+            ...scenario,
+            id: new Date().getTime().toString() + Math.random(),
+            methods: methods.filter(method => method.length > 0),
+        }
+    }).filter((scenario: UIScenario) => scenario.methods.length > 0);
+
+    // Save with the correct keys for backward compatibility
     saveElementsToStorage(newElements);
-    saveFlowsToStorage(newFlows);
+    saveScenariosToStorage(newScenarios);
+
 
     return Promise.resolve();
 };
@@ -190,9 +216,9 @@ export const importData = async (jsonData: string) => {
 
 export const addSampleData = () => {
     const elements = getElementsFromStorage();
-    const flows = getFlowsFromStorage();
+    const scenarios = getScenariosFromStorage();
 
-    if (elements.length > 0 || flows.length > 0) return;
+    if (elements.length > 0 || scenarios.length > 0) return;
 
     const loginEl: UIElement = {
         id: '1',
@@ -230,15 +256,25 @@ export const addSampleData = () => {
         // @ts-ignore
         createdAt: { toDate: () => new Date() }
     };
+     const forgotPasswordEl: UIElement = {
+        id: '5',
+        name: 'Forgot Password',
+        isBuggy: false,
+        bugDetails: '',
+        mediaLink: '',
+        // @ts-ignore
+        createdAt: { toDate: () => new Date() }
+    };
 
-    const sampleElements = [loginEl, dashboardEl, settingsEl, profileEl];
 
-    const sampleFlows: UIFlow[] = [
-        { id: '101', name: 'User Login', elementIds: [loginEl.id, dashboardEl.id], group: "Onboarding" },
-        { id: '102', name: 'Profile Update', elementIds: [dashboardEl.id, settingsEl.id, profileEl.id], group: "User Management" },
-        { id: '103', name: 'View Settings', elementIds: [dashboardEl.id, settingsEl.id], group: "User Management" },
+    const sampleElements = [loginEl, dashboardEl, settingsEl, profileEl, forgotPasswordEl];
+
+    const sampleScenarios: UIScenario[] = [
+        { id: '101', name: 'User Login', methods: [[loginEl.id, dashboardEl.id], [forgotPasswordEl.id, loginEl.id]], group: "Onboarding" },
+        { id: '102', name: 'Profile Update', methods: [[dashboardEl.id, settingsEl.id, profileEl.id]], group: "User Management" },
+        { id: '103', name: 'View Settings', methods: [[dashboardEl.id, settingsEl.id]], group: "User Management" },
     ];
     
     saveElementsToStorage(sampleElements);
-    saveFlowsToStorage(sampleFlows);
+    saveScenariosToStorage(sampleScenarios);
 };

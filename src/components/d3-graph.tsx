@@ -3,23 +3,52 @@
 
 import React, { useEffect, useRef, useMemo } from 'react';
 import * as d3 from 'd3';
-import type { UIElement, UIFlow } from '@/lib/types';
+import type { UIElement, UIScenario } from '@/lib/types';
 
 interface D3GraphProps {
   elements: UIElement[];
-  flows: UIFlow[];
+  scenarios: UIScenario[];
   onNodeClick: (element: UIElement) => void;
 }
 
-const D3Graph: React.FC<D3GraphProps> = ({ elements, flows, onNodeClick }) => {
+const D3Graph: React.FC<D3GraphProps> = ({ elements, scenarios, onNodeClick }) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const simulationRef = useRef<d3.Simulation<d3.SimulationNodeDatum, undefined>>();
 
-  const validFlows = useMemo(() => flows.filter(f => f && f.id), [flows]);
-  const flowColorScale = useMemo(() => 
-    d3.scaleOrdinal(d3.schemeCategory10).domain(validFlows.map(f => f.id)),
-    [validFlows]
+  const validScenarios = useMemo(() => scenarios.filter(f => f && f.id && f.methods && f.methods.length > 0), [scenarios]);
+  
+  const sanitizeId = (id: string) => id.replace(/[.\s]/g, '-');
+
+  const scenarioColorScale = useMemo(() => 
+    d3.scaleOrdinal(d3.schemeCategory10).domain(validScenarios.map(f => f.id)),
+    [validScenarios]
   );
+  
+  const elementScenarioCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    elements.forEach(el => counts[el.id] = 0);
+    validScenarios.forEach(scenario => {
+        const uniqueElementsInScenario = new Set<string>();
+        scenario.methods.forEach(method => {
+            method.forEach(elementId => {
+                uniqueElementsInScenario.add(elementId);
+            });
+        });
+        uniqueElementsInScenario.forEach(elementId => {
+            if (counts[elementId] !== undefined) {
+                counts[elementId]++;
+            }
+        });
+    });
+    return counts;
+  }, [elements, validScenarios]);
+
+  const radiusScale = useMemo(() => {
+      const counts = Object.values(elementScenarioCounts);
+      const minCount = Math.min(...counts) || 1;
+      const maxCount = Math.max(...counts) || 1;
+      return d3.scaleSqrt().domain([minCount, maxCount]).range([25, 45]);
+  }, [elementScenarioCounts]);
 
   useEffect(() => {
     if (!svgRef.current || !elements) return;
@@ -40,9 +69,9 @@ const D3Graph: React.FC<D3GraphProps> = ({ elements, flows, onNodeClick }) => {
     svg.call(zoom);
 
     container.append('defs').selectAll('marker')
-      .data(validFlows.map(f => f.id))
+      .data(validScenarios.map(f => f.id))
       .join('marker')
-        .attr('id', d => `arrow-${d}`)
+        .attr('id', d => `arrow-${sanitizeId(d)}`)
         .attr('viewBox', '0 -5 10 10')
         .attr('refX', 25)
         .attr('refY', 0)
@@ -51,23 +80,26 @@ const D3Graph: React.FC<D3GraphProps> = ({ elements, flows, onNodeClick }) => {
         .attr('orient', 'auto')
       .append('path')
         .attr('d', 'M0,-5L10,0L0,5')
-        .attr('fill', d => flowColorScale(d));
+        .attr('fill', d => scenarioColorScale(d));
 
     const nodes = elements.map(d => ({ ...d }));
     const nodeIds = new Set(elements.map(e => e.id));
     
     const links: any[] = [];
-    validFlows.forEach(flow => {
-      if (!flow.elementIds) return;
-      for (let i = 0; i < flow.elementIds.length - 1; i++) {
-        if (nodeIds.has(flow.elementIds[i]) && nodeIds.has(flow.elementIds[i+1])) {
-            links.push({
-              source: flow.elementIds[i],
-              target: flow.elementIds[i + 1],
-              flowId: flow.id,
-            });
+    validScenarios.forEach(scenario => {
+      if (!scenario.methods) return;
+      scenario.methods.forEach(method => {
+        for (let i = 0; i < method.length - 1; i++) {
+          if (nodeIds.has(method[i]) && nodeIds.has(method[i+1])) {
+              links.push({
+                source: method[i],
+                target: method[i + 1],
+                scenarioId: scenario.id,
+                scenarioName: scenario.name
+              });
+          }
         }
-      }
+      });
     });
 
     const linkGroups: { [key: string]: any[] } = {};
@@ -93,7 +125,7 @@ const D3Graph: React.FC<D3GraphProps> = ({ elements, flows, onNodeClick }) => {
             .force('link', d3.forceLink(links).id((d: any) => d.id).distance(150))
             .force('charge', d3.forceManyBody().strength(-400))
             .force('center', d3.forceCenter(width / 2, height / 2))
-            .force('collision', d3.forceCollide().radius(60));
+            .force('collision', d3.forceCollide().radius(d => radiusScale(elementScenarioCounts[(d as UIElement).id] || 1) + 10));
     } else {
         simulationRef.current.nodes(nodes as d3.SimulationNodeDatum[]);
         (simulationRef.current.force('link') as d3.ForceLink<any, any>).links(links);
@@ -102,21 +134,27 @@ const D3Graph: React.FC<D3GraphProps> = ({ elements, flows, onNodeClick }) => {
     const simulation = simulationRef.current;
 
     const link = container.append('g')
-      .selectAll('path')
+      .selectAll('g')
       .data(links)
-      .join('path')
-        .attr('class', d => `link flow-${d.flowId}`)
-        .attr('stroke-width', 2.5)
-        .attr('stroke', d => flowColorScale(d.flowId))
-        .attr('fill', 'none')
-        .attr('marker-end', d => `url(#arrow-${d.flowId})`)
-        .on('mouseover', function(event, d) {
-          d3.selectAll(`.link`).attr('stroke-opacity', 0.2);
-          d3.selectAll(`.flow-${d.flowId}`).attr('stroke-opacity', 1).attr('stroke-width', 4);
-        })
-        .on('mouseout', function() {
-          d3.selectAll('.link').attr('stroke-opacity', 1).attr('stroke-width', 2.5);
-        });
+      .join('g');
+
+    link.append('path')
+      .attr('class', d => `link scenario-${sanitizeId(d.scenarioId)}`)
+      .attr('stroke-width', 2.5)
+      .attr('stroke', d => scenarioColorScale(d.scenarioId))
+      .attr('fill', 'none')
+      .attr('marker-end', d => `url(#arrow-${sanitizeId(d.scenarioId)})`)
+      .on('mouseover', function(event, d) {
+        d3.selectAll(`.link`).attr('stroke-opacity', 0.2);
+        d3.selectAll(`.scenario-${sanitizeId(d.scenarioId)}`).attr('stroke-opacity', 1).attr('stroke-width', 4);
+      })
+      .on('mouseout', function() {
+        d3.selectAll('.link').attr('stroke-opacity', 1).attr('stroke-width', 2.5);
+      });
+    
+    link.append('title')
+        .text(d => d.scenarioName);
+
 
     const node = container.append('g')
       .selectAll('g')
@@ -127,7 +165,7 @@ const D3Graph: React.FC<D3GraphProps> = ({ elements, flows, onNodeClick }) => {
       .call(drag(simulation));
 
     node.append('circle')
-      .attr('r', 30)
+      .attr('r', d => radiusScale(elementScenarioCounts[d.id] || 1))
       .attr('fill', 'hsl(var(--card))')
       .attr('stroke', d => d.isBuggy ? 'hsl(var(--destructive))' : 'hsl(var(--primary))')
       .attr('stroke-width', d => d.isBuggy ? 4 : 2.5);
@@ -144,7 +182,7 @@ const D3Graph: React.FC<D3GraphProps> = ({ elements, flows, onNodeClick }) => {
         .text(d => d.name);
 
     simulation.on('tick', () => {
-        link.attr('d', d => {
+        link.select('path').attr('d', d => {
             const source = d.source as any;
             const target = d.target as any;
             
@@ -152,8 +190,21 @@ const D3Graph: React.FC<D3GraphProps> = ({ elements, flows, onNodeClick }) => {
             const dy = target.y - source.y;
             const dr = Math.sqrt(dx * dx + dy * dy);
 
+            const sourceRadius = radiusScale(elementScenarioCounts[source.id] || 1);
+            const targetRadius = radiusScale(elementScenarioCounts[target.id] || 1);
+
+            const sourcePoint = {
+                x: source.x + (dx * sourceRadius / dr),
+                y: source.y + (dy * sourceRadius / dr)
+            };
+            const targetPoint = {
+                x: target.x - (dx * targetRadius / dr),
+                y: target.y - (dy * targetRadius / dr)
+            };
+            
+
             if (d.parallelTotal <= 1) {
-              return `M${source.x},${source.y}L${target.x},${target.y}`;
+              return `M${sourcePoint.x},${sourcePoint.y}L${targetPoint.x},${targetPoint.y}`;
             }
 
             const totalShift = 15;
@@ -162,10 +213,10 @@ const D3Graph: React.FC<D3GraphProps> = ({ elements, flows, onNodeClick }) => {
             const normX = -dy / dr;
             const normY = dx / dr;
 
-            const midX = (source.x + target.x) / 2 + offset * normX;
-            const midY = (source.y + target.y) / 2 + offset * normY;
+            const midX = (sourcePoint.x + targetPoint.x) / 2 + offset * normX;
+            const midY = (sourcePoint.y + targetPoint.y) / 2 + offset * normY;
 
-            return `M${source.x},${source.y}Q${midX},${midY},${target.x},${target.y}`;
+            return `M${sourcePoint.x},${sourcePoint.y}Q${midX},${midY},${targetPoint.x},${targetPoint.y}`;
         });
 
       node.attr('transform', d => `translate(${d.x},${d.y})`);
@@ -177,7 +228,7 @@ const D3Graph: React.FC<D3GraphProps> = ({ elements, flows, onNodeClick }) => {
         simulation.stop();
     };
 
-  }, [elements, validFlows, onNodeClick, flowColorScale]);
+  }, [elements, validScenarios, onNodeClick, scenarioColorScale, radiusScale, elementScenarioCounts]);
 
   const drag = (simulation: d3.Simulation<d3.SimulationNodeDatum, undefined>) => {
     function dragstarted(event: d3.D3DragEvent<any, any, any>, d: any) {

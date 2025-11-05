@@ -41,12 +41,13 @@ interface ElementModalProps {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
   element?: UIElement | null;
+  elements: UIElement[];
   mode?: 'add' | 'edit' | 'view';
   onSave: (data: z.infer<typeof formSchema>, id?: string) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
 }
 
-export default function ElementModal({ isOpen, setIsOpen, element, mode: initialMode = 'add', onSave, onDelete }: ElementModalProps) {
+export default function ElementModal({ isOpen, setIsOpen, element, elements, mode: initialMode = 'add', onSave, onDelete }: ElementModalProps) {
   const [mode, setMode] = useState(initialMode);
   
   const form = useForm<z.infer<typeof formSchema>>({
@@ -119,7 +120,7 @@ export default function ElementModal({ isOpen, setIsOpen, element, mode: initial
                   <FormItem>
                     <FormLabel>Name</FormLabel>
                     <FormControl>
-                      <Input placeholder="e.g., Login Dialog" {...field} />
+                      <Input placeholder="e.g. Login Page" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

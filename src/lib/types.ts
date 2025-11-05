@@ -17,4 +17,5 @@ export interface UIFlow {
   id: string;
   name: string;
   elementIds: string[];
+  group?: string;
 }

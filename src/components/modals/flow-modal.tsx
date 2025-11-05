@@ -32,6 +32,7 @@ import { cn } from "@/lib/utils";
 
 const formSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
+  group: z.string().optional(),
   elementIds: z.array(z.string()).min(1, { message: "Flow must have at least one element." }),
 });
 
@@ -51,7 +52,11 @@ export default function FlowModal({ isOpen, setIsOpen, flow, elements, onSave }:
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: { name: flow?.name || "", elementIds: flow?.elementIds || [] },
+    defaultValues: {
+      name: flow?.name || "",
+      group: flow?.group || "",
+      elementIds: flow?.elementIds || [],
+    },
   });
 
   useEffect(() => {
@@ -60,6 +65,8 @@ export default function FlowModal({ isOpen, setIsOpen, flow, elements, onSave }:
     setSelectedElements(initialSelected);
     setAvailableElements(initialAvailable);
     form.setValue('elementIds', initialSelected.map(el => el.id));
+    form.setValue('name', flow?.name || "");
+    form.setValue('group', flow?.group || "");
   }, [flow, elements, form]);
 
   const handleSelect = (element: UIElement) => {
@@ -120,7 +127,12 @@ export default function FlowModal({ isOpen, setIsOpen, flow, elements, onSave }:
   );
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog open={isOpen} onOpenChange={(open) => {
+        if (!open) {
+            form.reset();
+        }
+        setIsOpen(open);
+    }}>
       <DialogContent className="sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle>{flow ? 'Edit Flow' : 'Add New Flow'}</DialogTitle>
@@ -128,19 +140,34 @@ export default function FlowModal({ isOpen, setIsOpen, flow, elements, onSave }:
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Flow Name</FormLabel>
-                  <FormControl>
-                    <Input placeholder="e.g., New User Registration" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <div className="grid grid-cols-2 gap-4">
+                <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>Flow Name</FormLabel>
+                    <FormControl>
+                        <Input placeholder="e.g., New User Registration" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />
+                <FormField
+                control={form.control}
+                name="group"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>Group (Optional)</FormLabel>
+                    <FormControl>
+                        <Input placeholder="e.g., Onboarding" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />
+            </div>
             
             <FormItem>
               <FormLabel>Flow Sequence</FormLabel>
@@ -171,5 +198,3 @@ export default function FlowModal({ isOpen, setIsOpen, flow, elements, onSave }:
     </Dialog>
   );
 }
-
-    

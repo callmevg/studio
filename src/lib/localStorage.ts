@@ -234,8 +234,9 @@ export const addSampleData = () => {
     const sampleElements = [loginEl, dashboardEl, settingsEl, profileEl];
 
     const sampleFlows: UIFlow[] = [
-        { id: '101', name: 'User Login', elementIds: [loginEl.id, dashboardEl.id] },
-        { id: '102', name: 'Profile Update', elementIds: [dashboardEl.id, settingsEl.id, profileEl.id] },
+        { id: '101', name: 'User Login', elementIds: [loginEl.id, dashboardEl.id], group: "Onboarding" },
+        { id: '102', name: 'Profile Update', elementIds: [dashboardEl.id, settingsEl.id, profileEl.id], group: "User Management" },
+        { id: '103', name: 'View Settings', elementIds: [dashboardEl.id, settingsEl.id], group: "User Management" },
     ];
     
     saveElementsToStorage(sampleElements);

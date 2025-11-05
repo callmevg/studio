@@ -259,6 +259,7 @@ export default function Home() {
           isOpen={elementModal.open}
           setIsOpen={(open) => setElementModal({ ...elementModal, open })}
           element={elementModal.data}
+          elements={elements}
           mode={elementModal.mode}
           onSave={async (data, id) => {
             const isNameTaken = elements.some(

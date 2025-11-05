@@ -28,7 +28,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import type { UIElement } from "@/lib/types";
 import Image from "next/image";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { Combobox } from "../ui/combobox";
 
 const formSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
@@ -41,12 +42,13 @@ interface ElementModalProps {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
   element?: UIElement | null;
+  elements: UIElement[];
   mode?: 'add' | 'edit' | 'view';
   onSave: (data: z.infer<typeof formSchema>, id?: string) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
 }
 
-export default function ElementModal({ isOpen, setIsOpen, element, mode: initialMode = 'add', onSave, onDelete }: ElementModalProps) {
+export default function ElementModal({ isOpen, setIsOpen, element, elements, mode: initialMode = 'add', onSave, onDelete }: ElementModalProps) {
   const [mode, setMode] = useState(initialMode);
   
   const form = useForm<z.infer<typeof formSchema>>({
@@ -58,6 +60,10 @@ export default function ElementModal({ isOpen, setIsOpen, element, mode: initial
       mediaLink: element?.mediaLink || "",
     },
   });
+
+  const elementOptions = useMemo(() => {
+    return elements.map(el => ({ value: el.name, label: el.name }));
+  }, [elements]);
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
     onSave(values, element?.id);
@@ -116,10 +122,17 @@ export default function ElementModal({ isOpen, setIsOpen, element, mode: initial
                 control={form.control}
                 name="name"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className="flex flex-col">
                     <FormLabel>Name</FormLabel>
                     <FormControl>
-                      <Input placeholder="e.g., Login Dialog" {...field} />
+                      <Combobox
+                        options={elementOptions}
+                        value={field.value}
+                        onChange={field.onChange}
+                        placeholder="Select or create new..."
+                        inputPlaceholder="Search elements..."
+                        emptyMessage="No element found. Type to create."
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

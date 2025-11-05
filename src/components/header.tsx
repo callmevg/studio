@@ -2,6 +2,7 @@ import React, { useRef } from 'react';
 import { Logo } from "@/components/icons";
 import { Button } from '@/components/ui/button';
 import { FileJson, Upload } from 'lucide-react';
+import { ThemeToggle } from './theme-toggle';
 
 interface HeaderProps {
   onExport: () => void;
@@ -34,6 +35,7 @@ export function Header({ onExport, onImport, disabled }: HeaderProps) {
               onChange={onImport}
               disabled={disabled}
             />
+            <ThemeToggle />
         </div>
       </div>
     </header>

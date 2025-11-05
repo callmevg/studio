@@ -17,7 +17,7 @@ const D3Graph: React.FC<D3GraphProps> = ({ elements, flows, onNodeClick }) => {
 
   const validFlows = useMemo(() => flows.filter(f => f && f.id && f.elementIds), [flows]);
   
-  const sanitizeId = (id: string) => id.replace(/\./g, '-');
+  const sanitizeId = (id: string) => id.replace(/[.\s]/g, '-');
 
   const flowColorScale = useMemo(() => 
     d3.scaleOrdinal(d3.schemeCategory10).domain(validFlows.map(f => f.id)),
@@ -88,6 +88,7 @@ const D3Graph: React.FC<D3GraphProps> = ({ elements, flows, onNodeClick }) => {
               source: flow.elementIds[i],
               target: flow.elementIds[i + 1],
               flowId: flow.id,
+              flowName: flow.name
             });
         }
       }
@@ -125,21 +126,27 @@ const D3Graph: React.FC<D3GraphProps> = ({ elements, flows, onNodeClick }) => {
     const simulation = simulationRef.current;
 
     const link = container.append('g')
-      .selectAll('path')
+      .selectAll('g')
       .data(links)
-      .join('path')
-        .attr('class', d => `link flow-${sanitizeId(d.flowId)}`)
-        .attr('stroke-width', 2.5)
-        .attr('stroke', d => flowColorScale(d.flowId))
-        .attr('fill', 'none')
-        .attr('marker-end', d => `url(#arrow-${sanitizeId(d.flowId)})`)
-        .on('mouseover', function(event, d) {
-          d3.selectAll(`.link`).attr('stroke-opacity', 0.2);
-          d3.selectAll(`.flow-${sanitizeId(d.flowId)}`).attr('stroke-opacity', 1).attr('stroke-width', 4);
-        })
-        .on('mouseout', function() {
-          d3.selectAll('.link').attr('stroke-opacity', 1).attr('stroke-width', 2.5);
-        });
+      .join('g');
+
+    link.append('path')
+      .attr('class', d => `link flow-${sanitizeId(d.flowId)}`)
+      .attr('stroke-width', 2.5)
+      .attr('stroke', d => flowColorScale(d.flowId))
+      .attr('fill', 'none')
+      .attr('marker-end', d => `url(#arrow-${sanitizeId(d.flowId)})`)
+      .on('mouseover', function(event, d) {
+        d3.selectAll(`.link`).attr('stroke-opacity', 0.2);
+        d3.selectAll(`.flow-${sanitizeId(d.flowId)}`).attr('stroke-opacity', 1).attr('stroke-width', 4);
+      })
+      .on('mouseout', function() {
+        d3.selectAll('.link').attr('stroke-opacity', 1).attr('stroke-width', 2.5);
+      });
+    
+    link.append('title')
+        .text(d => d.flowName);
+
 
     const node = container.append('g')
       .selectAll('g')
@@ -167,7 +174,7 @@ const D3Graph: React.FC<D3GraphProps> = ({ elements, flows, onNodeClick }) => {
         .text(d => d.name);
 
     simulation.on('tick', () => {
-        link.attr('d', d => {
+        link.select('path').attr('d', d => {
             const source = d.source as any;
             const target = d.target as any;
             

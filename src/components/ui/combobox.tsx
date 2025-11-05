@@ -2,7 +2,7 @@
 "use client"
 
 import * as React from "react"
-import { Check, ChevronsUpDown } from "lucide-react"
+import { Check, ChevronsUpDown, PlusCircle } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -37,19 +37,28 @@ interface ComboboxProps {
 
 export function Combobox({ options, value, onChange, placeholder, emptyMessage, inputPlaceholder }: ComboboxProps) {
   const [open, setOpen] = React.useState(false)
+  const [inputValue, setInputValue] = React.useState(value || "");
 
-  // This allows the user to type a new value that is not in the options.
+  React.useEffect(() => {
+    setInputValue(value || "");
+  }, [value]);
+
   const handleSelect = (currentValue: string) => {
-    onChange(currentValue === value ? "" : currentValue)
+    const newValue = currentValue === value ? "" : currentValue
+    onChange(newValue);
+    setInputValue(newValue);
     setOpen(false)
   }
 
-  const handleInputChange = (inputValue: string) => {
-    // Directly update the form value as the user types
-    onChange(inputValue);
+  const handleInputChange = (search: string) => {
+    setInputValue(search);
+    // Also update the form value as user types, allowing creation of new items
+    onChange(search);
   };
 
   const displayValue = value ? options.find(option => option.value.toLowerCase() === value.toLowerCase())?.label || value : (placeholder || "Select option...");
+  
+  const filteredOptions = options.filter(option => option.label.toLowerCase().includes(inputValue.toLowerCase()));
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -69,12 +78,22 @@ export function Combobox({ options, value, onChange, placeholder, emptyMessage, 
           <CommandInput
             placeholder={inputPlaceholder || "Search..."}
             onValueChange={handleInputChange}
-            value={value}
+            value={inputValue}
           />
           <CommandList>
-            <CommandEmpty>{emptyMessage || "No results found."}</CommandEmpty>
+            {filteredOptions.length === 0 && inputValue && (
+              <CommandItem
+                value={inputValue}
+                onSelect={() => handleSelect(inputValue)}
+                className="flex items-center"
+              >
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Create "{inputValue}"
+              </CommandItem>
+            )}
+            <CommandEmpty>{!inputValue ? 'Type to search or create.' : (emptyMessage || "No results found.")}</CommandEmpty>
             <CommandGroup>
-              {options.map((option) => (
+              {filteredOptions.map((option) => (
                 <CommandItem
                   key={option.value}
                   value={option.value}

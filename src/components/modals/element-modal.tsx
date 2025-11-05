@@ -128,7 +128,7 @@ export default function ElementModal({ isOpen, setIsOpen, element, elements, mod
                       <Combobox
                         options={elementOptions}
                         value={field.value}
-                        onChange={field.onChange}
+                        onChange={(value) => field.onChange(value)}
                         placeholder="Select or create new..."
                         inputPlaceholder="Search elements..."
                         emptyMessage="No element found. Type to create."

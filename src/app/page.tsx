@@ -13,6 +13,7 @@ import {
   addSampleData,
   exportData as exportDataFromFirebase,
   importData as importDataFromFirebase,
+  deleteFlow,
 } from '@/lib/firebase';
 import type { UIElement, UIFlow } from '@/lib/types';
 import D3Graph from '@/components/d3-graph';
@@ -24,6 +25,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Terminal } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Plus } from 'lucide-react';
 
 type ModalState<T> = { open: boolean; data?: T | null; mode?: 'add' | 'edit' | 'view' };
 
@@ -104,6 +107,21 @@ export default function Home() {
       event.target.value = ''; // Reset file input
     }
   };
+
+  const handleEditFlow = (flow: UIFlow) => {
+    setFlowModal({ open: true, data: flow, mode: 'edit' });
+  };
+
+  const handleDeleteFlow = async (flowId: string) => {
+    if (window.confirm("Are you sure you want to delete this flow?")) {
+      try {
+        await deleteFlow(flowId);
+        toast({ title: "Success", description: "Flow deleted." });
+      } catch (error: any) {
+        toast({ variant: "destructive", title: "Error", description: error.message });
+      }
+    }
+  };
   
   const renderContent = () => {
     if (!firebaseConfigured) {
@@ -130,20 +148,27 @@ export default function Home() {
         );
     }
 
-    return <D3Graph elements={elements} flows={flows} onNodeClick={handleNodeClick} />;
+    return (
+        <div className="w-full h-full relative">
+            <D3Graph elements={elements} flows={flows} onNodeClick={handleNodeClick} />
+            <div className="absolute bottom-4 right-4">
+                 <Button onClick={() => setElementModal({ open: true, data: null, mode: 'add' })} disabled={!firebaseConfigured}>
+                    <Plus className="mr-2 h-4 w-4" /> Add Element
+                </Button>
+            </div>
+        </div>
+    );
   }
 
   return (
     <div className="flex flex-col h-screen">
-      <Header />
+      <Header onExport={handleExportData} onImport={handleImportData} disabled={!firebaseConfigured} />
       <main className="flex flex-1 overflow-hidden">
         <Dashboard
-          elements={elements}
           flows={flows}
-          onAddElement={() => setElementModal({ open: true, data: null, mode: 'add' })}
           onAddFlow={() => setFlowModal({ open: true, data: null, mode: 'add' })}
-          onExport={handleExportData}
-          onImport={handleImportData}
+          onEditFlow={handleEditFlow}
+          onDeleteFlow={handleDeleteFlow}
           disabled={!firebaseConfigured}
         />
         <div className="flex-1 relative bg-background/50">

@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
@@ -152,6 +153,19 @@ export default function Home() {
           element={elementModal.data}
           mode={elementModal.mode}
           onSave={async (data, id) => {
+            const isNameTaken = elements.some(
+              (element) => element.name.toLowerCase() === data.name.toLowerCase() && element.id !== id
+            );
+    
+            if (isNameTaken) {
+              toast({
+                variant: "destructive",
+                title: "Duplicate Name",
+                description: `An element with the name "${data.name}" already exists.`,
+              });
+              return;
+            }
+
             try {
               if (id) {
                 await updateElement(id, data);

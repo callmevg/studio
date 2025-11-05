@@ -139,8 +139,8 @@ export default function Home() {
 
   const handleBulkUpdate = async (type: 'elements' | 'flows', data: any[]) => {
      if (type === 'elements') {
-        for (const item of data) {
-            const existing = elements.find(e => e.name.toLowerCase() === item.name.toLowerCase());
+        const updates = data.map(item => {
+            const existing = elements.find(e => e.id === item.id);
             const payload = {
                 name: item.name,
                 isBuggy: item.isBuggy || false,
@@ -148,33 +148,40 @@ export default function Home() {
                 mediaLink: item.mediaLink || ''
             };
             if (existing) {
-                await updateElement(existing.id, payload);
+                return updateElement(existing.id, payload);
             } else {
-                await addElement(payload);
+                 // This path is less likely with the new table, but good to have
+                return addElement(payload);
             }
-        }
+        });
+        await Promise.all(updates);
         toast({ title: 'Success', description: 'Elements updated.' });
     } else if (type === 'flows') {
-        for (const item of data) {
-            const existing = flows.find(f => f.name.toLowerCase() === item.name.toLowerCase());
-            const elementIds = item.elements.map((name: string) => {
-                const el = elements.find(e => e.name.toLowerCase() === name.toLowerCase().trim());
+        const updates = data.map(item => {
+            const existing = flows.find(f => f.id === item.id);
+            const elementIds = item.elements.map((nameOrId: string) => {
+                const el = elements.find(e => e.name.toLowerCase() === nameOrId.toLowerCase().trim() || e.id === nameOrId);
                 return el ? el.id : null;
-            }).filter(Boolean);
+            }).filter((id): id is string => id !== null);
 
-            if (elementIds.length === 0) continue;
-
+            if (elementIds.length === 0 && item.elements.length > 0) {
+                 toast({ variant: 'destructive', title: 'Flow Error', description: `Could not find elements for flow "${item.name}". Please check element names.` });
+                 return Promise.resolve(); // Skip this one
+            }
+            
             const payload = {
                 name: item.name,
                 group: item.group || '',
                 elementIds: elementIds,
             };
+
             if (existing) {
-                await updateFlow(existing.id, payload);
+                return updateFlow(existing.id, payload);
             } else {
-                await addFlow(payload);
+                return addFlow(payload);
             }
-        }
+        });
+        await Promise.all(updates);
         toast({ title: 'Success', description: 'Flows updated.' });
     }
   };

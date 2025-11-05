@@ -1,13 +1,14 @@
 
 "use client";
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { UIElement, UIFlow } from '@/lib/types';
 import { Checkbox } from './ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
+import { Trash2 } from 'lucide-react';
 
 interface TableViewProps {
     elements: UIElement[];
@@ -17,50 +18,81 @@ interface TableViewProps {
 
 export function TableView({ elements, flows, onBulkUpdate }: TableViewProps) {
     const { toast } = useToast();
-    const [elementPasteData, setElementPasteData] = useState('');
-    const [flowPasteData, setFlowPasteData] = useState('');
+    const [editableElements, setEditableElements] = useState(elements);
+    const [editableFlows, setEditableFlows] = useState(flows);
 
-    const elementNames = elements.map(e => e.name).join(', ');
+    useEffect(() => {
+        setEditableElements(elements.map(e => ({...e})));
+    }, [elements]);
 
-    const handlePaste = (type: 'elements' | 'flows') => {
-        const dataToParse = type === 'elements' ? elementPasteData : flowPasteData;
-        if (!dataToParse.trim()) {
-            toast({ variant: 'destructive', title: 'Error', description: 'Paste data is empty.' });
-            return;
-        }
+    useEffect(() => {
+        setEditableFlows(flows.map(f => ({
+            ...f,
+            elementIds: [...f.elementIds]
+        })));
+    }, [flows]);
+    
+    const handleElementChange = (id: string, field: keyof UIElement, value: string | boolean) => {
+        setEditableElements(prev =>
+            prev.map(el => (el.id === id ? { ...el, [field]: value } : el))
+        );
+    };
 
+    const handleFlowChange = (id: string, field: keyof UIFlow, value: string) => {
+        setEditableFlows(prev =>
+            prev.map(flow => (flow.id === id ? { ...flow, [field]: value } : flow))
+        );
+    };
+
+    const handleFlowElementsChange = (id: string, value: string) => {
+        const elementNames = value.split(',').map(name => name.trim());
+        setEditableFlows(prev =>
+            prev.map(flow => (flow.id === id ? { ...flow, elementIds: elementNames } : flow))
+        );
+    };
+
+    const handleSaveChanges = (type: 'elements' | 'flows') => {
         try {
-            const rows = dataToParse.trim().split('\n').map(row => row.split('\t'));
-            
             if (type === 'elements') {
-                const parsedElements = rows.map(row => ({
-                    name: row[0] || '',
-                    isBuggy: row[1] ? row[1].toLowerCase() === 'true' : false,
-                    bugDetails: row[2] || '',
-                    mediaLink: row[3] || '',
+                const elementsToUpdate = editableElements.map(el => ({
+                    id: el.id,
+                    name: el.name,
+                    isBuggy: el.isBuggy,
+                    bugDetails: el.bugDetails || '',
+                    mediaLink: el.mediaLink || ''
                 }));
-                onBulkUpdate('elements', parsedElements);
-                setElementPasteData('');
+                onBulkUpdate('elements', elementsToUpdate);
             } else { // flows
-                const parsedFlows = rows.map(row => ({
-                    name: row[0] || '',
-                    group: row[1] || '',
-                    elements: (row[2] || '').split(',').map(s => s.trim()).filter(Boolean),
-                }));
-                onBulkUpdate('flows', parsedFlows);
-                setFlowPasteData('');
+                const flowsToUpdate = editableFlows.map(flow => {
+                    // This is a bit tricky since we have names in the table, but need ids for the update.
+                    const elementIds = flow.elementIds.map(name => {
+                        const element = elements.find(el => el.name.toLowerCase() === name.toLowerCase());
+                        return element ? element.id : name; // Keep name if not found, let parent handle it
+                    });
+
+                    return {
+                        id: flow.id,
+                        name: flow.name,
+                        group: flow.group || '',
+                        elements: elementIds, // The parent expects `elements` not `elementIds`
+                    };
+                });
+                 onBulkUpdate('flows', flowsToUpdate);
             }
         } catch (error) {
-            toast({ variant: 'destructive', title: 'Parsing Error', description: 'Failed to parse pasted data. Please check the format.' });
+            toast({ variant: 'destructive', title: 'Save Error', description: 'Failed to save changes.' });
         }
     };
+
+
+    const elementNamesList = elements.map(e => e.name).join(', ');
 
     return (
         <div className="space-y-6">
             <Card>
                 <CardHeader>
                     <CardTitle>Elements</CardTitle>
-                    <CardDescription>View and bulk-edit your UI elements.</CardDescription>
+                    <CardDescription>View and edit your UI elements directly in the table.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <div className="space-y-4">
@@ -74,31 +106,34 @@ export function TableView({ elements, flows, onBulkUpdate }: TableViewProps) {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {elements.map(el => (
+                                    {editableElements.map(el => (
                                         <TableRow key={el.id}>
-                                            <TableCell className="font-medium">{el.name}</TableCell>
                                             <TableCell>
-                                                <Checkbox checked={el.isBuggy} disabled />
+                                                <Input
+                                                    value={el.name}
+                                                    onChange={(e) => handleElementChange(el.id, 'name', e.target.value)}
+                                                    className="h-8"
+                                                />
                                             </TableCell>
-                                            <TableCell>{el.bugDetails}</TableCell>
+                                            <TableCell className="text-center">
+                                                <Checkbox
+                                                    checked={el.isBuggy}
+                                                    onCheckedChange={(checked) => handleElementChange(el.id, 'isBuggy', !!checked)}
+                                                />
+                                            </TableCell>
+                                            <TableCell>
+                                                <Input
+                                                    value={el.bugDetails}
+                                                    onChange={(e) => handleElementChange(el.id, 'bugDetails', e.target.value)}
+                                                    className="h-8"
+                                                />
+                                            </TableCell>
                                         </TableRow>
                                     ))}
                                 </TableBody>
                             </Table>
                         </div>
-                        <div className="space-y-2">
-                             <h4 className="font-semibold text-md">Copy/Paste from Excel</h4>
-                             <p className="text-sm text-muted-foreground">
-                                Paste tab-separated values with columns: `Name`, `Is Buggy` (true/false), `Bug Details`, `Media Link`
-                             </p>
-                            <Textarea
-                                placeholder="Paste data here..."
-                                value={elementPasteData}
-                                onChange={(e) => setElementPasteData(e.target.value)}
-                                className="min-h-[100px]"
-                            />
-                            <Button onClick={() => handlePaste('elements')}>Update Elements</Button>
-                        </div>
+                        <Button onClick={() => handleSaveChanges('elements')}>Save Element Changes</Button>
                     </div>
                 </CardContent>
             </Card>
@@ -106,7 +141,13 @@ export function TableView({ elements, flows, onBulkUpdate }: TableViewProps) {
             <Card>
                 <CardHeader>
                     <CardTitle>Flows</CardTitle>
-                    <CardDescription>View and bulk-edit your user flows.</CardDescription>
+                    <CardDescription>
+                        View and edit your user flows. Use comma-separated names for elements.
+                        <br />
+                        <span className="text-xs text-muted-foreground">
+                            Available elements: <span className="font-mono text-xs bg-muted p-1 rounded">{elementNamesList}</span>
+                        </span>
+                    </CardDescription>
                 </CardHeader>
                 <CardContent>
                     <div className="space-y-4">
@@ -116,40 +157,39 @@ export function TableView({ elements, flows, onBulkUpdate }: TableViewProps) {
                                     <TableRow>
                                         <TableHead>Name</TableHead>
                                         <TableHead>Group</TableHead>
-                                        <TableHead>Elements</TableHead>
+                                        <TableHead>Elements (comma-separated)</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {flows.map(flow => (
+                                    {editableFlows.map(flow => (
                                         <TableRow key={flow.id}>
-                                            <TableCell className="font-medium">{flow.name}</TableCell>
-                                            <TableCell>{flow.group}</TableCell>
                                             <TableCell>
-                                                {flow.elementIds
-                                                    .map(id => elements.find(el => el.id === id)?.name)
-                                                    .filter(Boolean)
-                                                    .join(' → ')}
+                                                <Input
+                                                    value={flow.name}
+                                                    onChange={(e) => handleFlowChange(flow.id, 'name', e.target.value)}
+                                                    className="h-8"
+                                                />
+                                            </TableCell>
+                                            <TableCell>
+                                                <Input
+                                                    value={flow.group || ''}
+                                                    onChange={(e) => handleFlowChange(flow.id, 'group', e.target.value)}
+                                                    className="h-8"
+                                                />
+                                            </TableCell>
+                                            <TableCell>
+                                                <Input
+                                                    value={flow.elementIds.map(id => elements.find(el => el.id === id)?.name || id).join(', ')}
+                                                    onChange={(e) => handleFlowElementsChange(flow.id, e.target.value)}
+                                                    className="h-8"
+                                                />
                                             </TableCell>
                                         </TableRow>
                                     ))}
                                 </TableBody>
                             </Table>
                         </div>
-                        <div className="space-y-2">
-                             <h4 className="font-semibold text-md">Copy/Paste from Excel</h4>
-                             <p className="text-sm text-muted-foreground">
-                                Paste tab-separated values with columns: `Name`, `Group`, `Elements` (comma-separated names).
-                                <br />
-                                Available element names: <span className="font-mono text-xs bg-muted p-1 rounded">{elementNames}</span>
-                             </p>
-                            <Textarea
-                                placeholder="Paste data here..."
-                                value={flowPasteData}
-                                onChange={(e) => setFlowPasteData(e.target.value)}
-                                className="min-h-[100px]"
-                            />
-                            <Button onClick={() => handlePaste('flows')}>Update Flows</Button>
-                        </div>
+                         <Button onClick={() => handleSaveChanges('flows')}>Save Flow Changes</Button>
                     </div>
                 </CardContent>
             </Card>

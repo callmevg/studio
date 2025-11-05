@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { UIElement, UIScenario } from '@/lib/types';
+import type { UIElement, UIScenario } from '@/lib/types';
 import { Checkbox } from './ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { Plus } from 'lucide-react';
@@ -19,8 +19,8 @@ interface TableViewProps {
 
 export function TableView({ elements, scenarios, onBulkUpdate }: TableViewProps) {
     const { toast } = useToast();
-    const [editableElements, setEditableElements] = useState(elements);
-    const [editableScenarios, setEditableScenarios] = useState(scenarios);
+    const [editableElements, setEditableElements] = useState<UIElement[]>([]);
+    const [editableScenarios, setEditableScenarios] = useState<UIScenario[]>([]);
 
     useEffect(() => {
         setEditableElements(elements.map(e => ({...e})));
@@ -29,7 +29,7 @@ export function TableView({ elements, scenarios, onBulkUpdate }: TableViewProps)
     useEffect(() => {
         setEditableScenarios(scenarios.map(f => ({
             ...f,
-            methods: [...f.methods]
+            methods: [...(f.methods || [])]
         })));
     }, [scenarios]);
     
@@ -90,13 +90,13 @@ export function TableView({ elements, scenarios, onBulkUpdate }: TableViewProps)
     
     const handleAddElement = () => {
         const newId = `new-${Date.now()}`;
-        // @ts-ignore
         const newElement: UIElement = {
             id: newId,
             name: 'New Element',
             isBuggy: false,
             bugDetails: '',
             mediaLink: '',
+            // @ts-ignore
             createdAt: { toDate: () => new Date() }
         };
         setEditableElements(prev => [...prev, newElement]);
@@ -151,7 +151,7 @@ export function TableView({ elements, scenarios, onBulkUpdate }: TableViewProps)
                                         </TableCell>
                                         <TableCell className="p-2">
                                             <Input
-                                                value={el.bugDetails}
+                                                value={el.bugDetails || ''}
                                                 onChange={(e) => handleElementChange(el.id, 'bugDetails', e.target.value)}
                                                 className="h-8"
                                             />

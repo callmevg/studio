@@ -52,6 +52,7 @@ const D3Graph: React.FC<D3GraphProps> = ({ elements, flows, onNodeClick }) => {
         .attr('fill', d => flowColorScale(d));
 
     const nodes = elements.map(d => ({ ...d }));
+    
     const links: any[] = [];
     flows.forEach(flow => {
       for (let i = 0; i < flow.elementIds.length - 1; i++) {
@@ -61,6 +62,21 @@ const D3Graph: React.FC<D3GraphProps> = ({ elements, flows, onNodeClick }) => {
           flowId: flow.id,
         });
       }
+    });
+
+    // Group links for offsetting parallel paths
+    const linkGroups: { [key: string]: any[] } = {};
+    links.forEach(link => {
+      const key = (link.source < link.target) ? `${link.source}-${link.target}` : `${link.target}-${link.source}`;
+      if (!linkGroups[key]) linkGroups[key] = [];
+      linkGroups[key].push(link);
+    });
+
+    links.forEach(link => {
+        const key = (link.source.id < link.target.id) ? `${link.source.id}-${link.target.id}` : `${link.target.id}-${link.source.id}`;
+        const group = linkGroups[key];
+        link.parallelIndex = group.indexOf(link);
+        link.parallelTotal = group.length;
     });
 
     if (!simulationRef.current) {
@@ -77,13 +93,21 @@ const D3Graph: React.FC<D3GraphProps> = ({ elements, flows, onNodeClick }) => {
     const simulation = simulationRef.current;
 
     const link = container.append('g')
-      .attr('stroke-opacity', 0.6)
-      .selectAll('line')
+      .selectAll('path')
       .data(links)
-      .join('line')
+      .join('path')
+        .attr('class', d => `link flow-${d.flowId}`)
         .attr('stroke-width', 2.5)
         .attr('stroke', d => flowColorScale(d.flowId))
-        .attr('marker-end', d => `url(#arrow-${d.flowId})`);
+        .attr('fill', 'none')
+        .attr('marker-end', d => `url(#arrow-${d.flowId})`)
+        .on('mouseover', function(event, d) {
+          d3.selectAll(`.link`).attr('stroke-opacity', 0.2);
+          d3.selectAll(`.flow-${d.flowId}`).attr('stroke-opacity', 1).attr('stroke-width', 4);
+        })
+        .on('mouseout', function() {
+          d3.selectAll('.link').attr('stroke-opacity', 1).attr('stroke-width', 2.5);
+        });
 
     const node = container.append('g')
       .selectAll('g')
@@ -111,11 +135,30 @@ const D3Graph: React.FC<D3GraphProps> = ({ elements, flows, onNodeClick }) => {
         .text(d => d.name);
 
     simulation.on('tick', () => {
-      link
-        .attr('x1', d => (d.source as any).x)
-        .attr('y1', d => (d.source as any).y)
-        .attr('x2', d => (d.target as any).x)
-        .attr('y2', d => (d.target as any).y);
+        link.attr('d', d => {
+            const source = d.source as any;
+            const target = d.target as any;
+            
+            const dx = target.x - source.x;
+            const dy = target.y - source.y;
+            const dr = Math.sqrt(dx * dx + dy * dy);
+
+            if (d.parallelTotal <= 1) {
+              return `M${source.x},${source.y}L${target.x},${target.y}`;
+            }
+
+            // Offset for parallel lines
+            const totalShift = 15; // Max distance from center line
+            const offset = (d.parallelIndex - (d.parallelTotal - 1) / 2) * totalShift / d.parallelTotal;
+            
+            const normX = -dy / dr;
+            const normY = dx / dr;
+
+            const midX = (source.x + target.x) / 2 + offset * normX;
+            const midY = (source.y + target.y) / 2 + offset * normY;
+
+            return `M${source.x},${source.y}Q${midX},${midY},${target.x},${target.y}`;
+        });
 
       node.attr('transform', d => `translate(${d.x},${d.y})`);
     });

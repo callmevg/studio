@@ -11,10 +11,11 @@ import {
   updateFlow,
   signIn,
   addSampleData,
-  exportData as exportDataFromFirebase,
-  importData as importDataFromFirebase,
+  exportData as exportDataFromLocalStorage,
+  importData as importDataFromLocalStorage,
   deleteFlow,
-} from '@/lib/firebase';
+  deleteElement,
+} from '@/lib/localStorage';
 import type { UIElement, UIFlow } from '@/lib/types';
 import D3Graph from '@/components/d3-graph';
 import { Header } from '@/components/header';
@@ -23,8 +24,6 @@ import ElementModal from '@/components/modals/element-modal';
 import FlowModal from '@/components/modals/flow-modal';
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from '@/components/ui/skeleton';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Terminal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 
@@ -35,7 +34,6 @@ export default function Home() {
   const [flows, setFlows] = useState<UIFlow[]>([]);
   const [loading, setLoading] = useState(true);
   const dataInitialized = useRef(false);
-  const [firebaseConfigured, setFirebaseConfigured] = useState(true);
 
   const { toast } = useToast();
 
@@ -43,40 +41,34 @@ export default function Home() {
   const [flowModal, setFlowModal] = useState<ModalState<UIFlow>>({ open: false, mode: 'add' });
 
   useEffect(() => {
-    const isConfigured = process.env.NEXT_PUBLIC_FIREBASE_API_KEY && process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
-    setFirebaseConfigured(!!isConfigured);
-
-    if (!isConfigured) {
-      setLoading(false);
-      return;
-    }
-
-    signIn();
+    signIn(); // No-op, but keeps structure
 
     const unsubscribeElements = getElements((data) => {
       setElements(data);
-      checkAndInitData(data, flows);
+      if (!dataInitialized.current) {
+        checkAndInitData(data, flows);
+      }
+      setLoading(false);
     });
 
     const unsubscribeFlows = getFlows((data) => {
       setFlows(data);
-      checkAndInitData(elements, data);
+       if (!dataInitialized.current) {
+        checkAndInitData(elements, data);
+      }
     });
 
     return () => {
       unsubscribeElements();
       unsubscribeFlows();
     };
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const checkAndInitData = (currentElements: UIElement[], currentFlows: UIFlow[]) => {
-    if (!dataInitialized.current && currentElements !== null && currentFlows !== null) {
-      if (currentElements.length === 0 && currentFlows.length === 0) {
+    if (!dataInitialized.current && currentElements.length === 0 && currentFlows.length === 0) {
         addSampleData();
         toast({ title: "Welcome!", description: "We've added some sample data to get you started." });
-      }
-      dataInitialized.current = true;
-      setLoading(false);
+        dataInitialized.current = true;
     }
   };
 
@@ -85,7 +77,7 @@ export default function Home() {
   }, []);
 
   const handleExportData = () => {
-    exportDataFromFirebase(elements, flows);
+    exportDataFromLocalStorage(elements, flows);
     toast({ title: "Success", description: "Data exported successfully." });
   };
 
@@ -96,7 +88,7 @@ export default function Home() {
       reader.onload = async (e) => {
         try {
           const json = e.target?.result as string;
-          await importDataFromFirebase(json);
+          await importDataFromLocalStorage(json);
           toast({ title: "Success", description: "Data imported successfully. The graph will update." });
 
         } catch (error: any) {
@@ -122,25 +114,21 @@ export default function Home() {
       }
     }
   };
+
+  const handleDeleteElement = async (elementId: string) => {
+    if (window.confirm("Are you sure you want to delete this element? This will also remove it from any flows it's a part of.")) {
+      try {
+        await deleteElement(elementId);
+        toast({ title: "Success", description: "Element deleted." });
+        setElementModal({ open: false });
+      } catch (error: any) {
+        toast({ variant: "destructive", title: "Error", description: error.message });
+      }
+    }
+  };
   
   const renderContent = () => {
-    if (!firebaseConfigured) {
-      return (
-        <div className="flex items-center justify-center h-full p-8">
-            <Alert variant="destructive" className="max-w-2xl">
-              <Terminal className="h-4 w-4" />
-              <AlertTitle>Firebase Not Configured</AlertTitle>
-              <AlertDescription>
-                Your Firebase project credentials are not set up. Please add your project's configuration to a 
-                <code className="relative rounded bg-muted px-[0.3rem] py-[0.2rem] font-mono text-sm font-semibold mx-1">.env.local</code> 
-                file in the root of your project to continue.
-              </AlertDescription>
-            </Alert>
-        </div>
-      );
-    }
-    
-    if (loading) {
+    if (loading && elements.length === 0) {
         return (
           <div className="flex items-center justify-center h-full">
              <Skeleton className="w-[80%] h-[80%] rounded-lg" />
@@ -152,7 +140,7 @@ export default function Home() {
         <div className="w-full h-full relative">
             <D3Graph elements={elements} flows={flows} onNodeClick={handleNodeClick} />
             <div className="absolute bottom-4 right-4">
-                 <Button onClick={() => setElementModal({ open: true, data: null, mode: 'add' })} disabled={!firebaseConfigured}>
+                 <Button onClick={() => setElementModal({ open: true, data: null, mode: 'add' })}>
                     <Plus className="mr-2 h-4 w-4" /> Add Element
                 </Button>
             </div>
@@ -162,14 +150,13 @@ export default function Home() {
 
   return (
     <div className="flex flex-col h-screen">
-      <Header onExport={handleExportData} onImport={handleImportData} disabled={!firebaseConfigured} />
+      <Header onExport={handleExportData} onImport={handleImportData} />
       <main className="flex flex-1 overflow-hidden">
         <Dashboard
           flows={flows}
           onAddFlow={() => setFlowModal({ open: true, data: null, mode: 'add' })}
           onEditFlow={handleEditFlow}
           onDeleteFlow={handleDeleteFlow}
-          disabled={!firebaseConfigured}
         />
         <div className="flex-1 relative bg-background/50">
           {renderContent()}
@@ -209,6 +196,7 @@ export default function Home() {
               toast({ variant: "destructive", title: "Error", description: error.message });
             }
           }}
+          onDelete={handleDeleteElement}
         />
       )}
 

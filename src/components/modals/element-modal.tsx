@@ -1,3 +1,4 @@
+
 "use client";
 
 import { z } from "zod";
@@ -24,8 +25,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { deleteElement } from "@/lib/firebase";
-import { useToast } from "@/hooks/use-toast";
 import type { UIElement } from "@/lib/types";
 import Image from "next/image";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
@@ -44,10 +43,10 @@ interface ElementModalProps {
   element?: UIElement | null;
   mode?: 'add' | 'edit' | 'view';
   onSave: (data: z.infer<typeof formSchema>, id?: string) => Promise<void>;
+  onDelete: (id: string) => Promise<void>;
 }
 
-export default function ElementModal({ isOpen, setIsOpen, element, mode: initialMode = 'add', onSave }: ElementModalProps) {
-  const { toast } = useToast();
+export default function ElementModal({ isOpen, setIsOpen, element, mode: initialMode = 'add', onSave, onDelete }: ElementModalProps) {
   const [mode, setMode] = useState(initialMode);
   
   const form = useForm<z.infer<typeof formSchema>>({
@@ -65,14 +64,8 @@ export default function ElementModal({ isOpen, setIsOpen, element, mode: initial
   };
 
   const handleDelete = async () => {
-    if (element?.id && window.confirm("Are you sure you want to delete this element? This might break existing flows.")) {
-      try {
-        await deleteElement(element.id);
-        toast({ title: "Success", description: "Element deleted." });
-        setIsOpen(false);
-      } catch (error: any) {
-        toast({ variant: "destructive", title: "Error", description: error.message });
-      }
+    if (element?.id) {
+        onDelete(element.id);
     }
   };
 

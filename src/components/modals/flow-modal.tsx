@@ -70,7 +70,9 @@ export default function FlowModal({ isOpen, setIsOpen, flow, elements, flows, on
 
   useEffect(() => {
     const initialSelected = flow ? flow.elementIds.map(id => elements.find(el => el.id === id)).filter(Boolean) as UIElement[] : [];
-    const initialAvailable = elements.filter(el => !initialSelected.some(sel => sel.id === el.id));
+    const initialAvailable = elements
+      .filter(el => !initialSelected.some(sel => sel.id === el.id))
+      .sort((a, b) => a.name.localeCompare(b.name));
     setSelectedElements(initialSelected);
     setAvailableElements(initialAvailable);
     form.setValue('elementIds', initialSelected.map(el => el.id));
@@ -88,7 +90,7 @@ export default function FlowModal({ isOpen, setIsOpen, flow, elements, flows, on
 
   const handleDeselect = (element: UIElement) => {
     const newSelected = selectedElements.filter(el => el.id !== element.id);
-    const newAvailable = [...availableElements, element];
+    const newAvailable = [...availableElements, element].sort((a, b) => a.name.localeCompare(b.name));
     setAvailableElements(newAvailable);
     setSelectedElements(newSelected);
     form.setValue('elementIds', newSelected.map(el => el.id));

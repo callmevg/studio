@@ -20,14 +20,14 @@ const saveElementsToStorage = (elements: UIElement[]) => {
 
 const getScenariosFromStorage = (): UIScenario[] => {
   if (typeof window === 'undefined') return [];
-  const data = localStorage.getItem('flowverse-scenarios');
+  const data = localStorage.getItem('flowverse-flows'); // Reverted from 'scenarios' to 'flows'
   // Backwards compatibility for old data structure
   const scenarios = data ? JSON.parse(data) : [];
   return scenarios.map((scenario: any) => {
     if (scenario.elementIds && !scenario.methods) {
       return { ...scenario, methods: [scenario.elementIds], elementIds: undefined };
     }
-    if (scenario.paths && !scenario.methods) {
+    if (scenario.paths && !scenario.methods) { // Still handle 'paths' for migration
       return { ...scenario, methods: scenario.paths, paths: undefined };
     }
     return scenario;
@@ -36,7 +36,7 @@ const getScenariosFromStorage = (): UIScenario[] => {
 
 const saveScenariosToStorage = (scenarios: UIScenario[]) => {
     if (typeof window === 'undefined') return;
-  localStorage.setItem('flowverse-scenarios', JSON.stringify(scenarios));
+  localStorage.setItem('flowverse-flows', JSON.stringify(scenarios)); // Reverted from 'scenarios' to 'flows'
   window.dispatchEvent(new Event('storage'));
 };
 
@@ -151,7 +151,7 @@ export const exportData = (elements: UIElement[], scenarios: UIScenario[]) => {
 
     const data = {
         elements: serializableElements,
-        scenarios: scenarios,
+        flows: scenarios, // Use 'flows' on export for backward compatibility
     };
 
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -196,7 +196,7 @@ export const importData = async (jsonData: string) => {
         } else if (scenario.paths) { // Handle intermediate format 'paths'
             methods = scenario.paths.map((path: string[]) => path.map((oldId: string) => idMap[oldId]).filter(Boolean));
         } else { // Handle new format 'methods'
-            methods = scenario.methods.map((method: string[]) => method.map((oldId: string) => idMap[oldId]).filter(Boolean));
+            methods = (scenario.methods || []).map((method: string[]) => method.map((oldId: string) => idMap[oldId]).filter(Boolean));
         }
 
 
@@ -210,9 +210,14 @@ export const importData = async (jsonData: string) => {
     saveElementsToStorage(newElements);
     saveScenariosToStorage(newScenarios);
 
-    // Old data migration
+    // Clean up old storage items if they exist
     localStorage.removeItem('flowverse-flows');
+    localStorage.removeItem('flowverse-scenarios');
     localStorage.removeItem('flowverse-elements');
+    
+    // Save with the correct keys
+    saveElementsToStorage(newElements);
+    saveScenariosToStorage(newScenarios);
 
 
     return Promise.resolve();
@@ -283,3 +288,5 @@ export const addSampleData = () => {
     saveElementsToStorage(sampleElements);
     saveScenariosToStorage(sampleScenarios);
 };
+
+    

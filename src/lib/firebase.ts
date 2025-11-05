@@ -109,7 +109,11 @@ export const deleteFlow = (id: string) => {
 
 export const exportData = (elements: UIElement[], flows: UIFlow[]) => {
   const data = {
-    elements: elements.map(({ x, y, ...el }) => ({...el, createdAt: el.createdAt.toDate().toISOString()})),
+    elements: elements.map(({ x, y, fx, fy, ...el }) => {
+        const { createdAt, ...rest } = el;
+        const serializableCreatedAt = createdAt instanceof Timestamp ? createdAt.toDate().toISOString() : createdAt;
+        return { ...rest, createdAt: serializableCreatedAt };
+    }),
     flows: flows,
   };
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });

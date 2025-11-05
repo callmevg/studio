@@ -25,10 +25,11 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import type { UIElement, UIFlow } from "@/lib/types";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, ArrowRight, ChevronsDown, ChevronsUp, Plus, Trash2 } from "lucide-react";
 import { deleteFlow } from "@/lib/localStorage";
 import { cn } from "@/lib/utils";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const formSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
@@ -41,11 +42,12 @@ interface FlowModalProps {
   setIsOpen: (open: boolean) => void;
   flow?: UIFlow | null;
   elements: UIElement[];
+  flows: UIFlow[];
   onSave: (data: z.infer<typeof formSchema>, id?: string) => Promise<void>;
   onAddNewElement: () => void;
 }
 
-export default function FlowModal({ isOpen, setIsOpen, flow, elements, onSave, onAddNewElement }: FlowModalProps) {
+export default function FlowModal({ isOpen, setIsOpen, flow, elements, flows, onSave, onAddNewElement }: FlowModalProps) {
   const { toast } = useToast();
   
   const [selectedElements, setSelectedElements] = useState<UIElement[]>([]);
@@ -59,6 +61,12 @@ export default function FlowModal({ isOpen, setIsOpen, flow, elements, onSave, o
       elementIds: flow?.elementIds || [],
     },
   });
+
+  const existingGroups = useMemo(() => {
+    const groups = new Set(flows.map(f => f.group).filter(Boolean));
+    return Array.from(groups) as string[];
+  }, [flows]);
+
 
   useEffect(() => {
     const initialSelected = flow ? flow.elementIds.map(id => elements.find(el => el.id === id)).filter(Boolean) as UIElement[] : [];
@@ -158,17 +166,38 @@ export default function FlowModal({ isOpen, setIsOpen, flow, elements, onSave, o
                 )}
                 />
                 <FormField
-                control={form.control}
-                name="group"
-                render={({ field }) => (
+                  control={form.control}
+                  name="group"
+                  render={({ field }) => (
                     <FormItem>
-                    <FormLabel>Group (Optional)</FormLabel>
-                    <FormControl>
-                        <Input placeholder="e.g., Onboarding" {...field} />
-                    </FormControl>
-                    <FormMessage />
+                      <FormLabel>Group (Optional)</FormLabel>
+                        <Select
+                            onValueChange={field.onChange}
+                            defaultValue={field.value}
+                            value={field.value}
+                        >
+                            <FormControl>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select or type a group" />
+                                </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                                <Input
+                                    className="mb-2"
+                                    placeholder="Type to add new group"
+                                    onChange={(e) => field.onChange(e.target.value)}
+                                    value={field.value || ''}
+                                />
+                                {existingGroups.map((groupName) => (
+                                <SelectItem key={groupName} value={groupName}>
+                                    {groupName}
+                                </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                      <FormMessage />
                     </FormItem>
-                )}
+                  )}
                 />
             </div>
             

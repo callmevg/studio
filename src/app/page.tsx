@@ -298,6 +298,7 @@ export default function Home() {
           setIsOpen={(open) => setFlowModal({ ...flowModal, open })}
           flow={flowModal.data}
           elements={elements}
+          flows={flows}
           onSave={async (data, id) => {
             const isNameTaken = flows.some(
                 (flow) => flow.name.toLowerCase() === data.name.toLowerCase() && flow.id !== id

@@ -30,7 +30,6 @@ import { ArrowLeft, ArrowRight, ChevronsDown, ChevronsUp, Plus, Trash2 } from "l
 import { deleteFlow } from "@/lib/localStorage";
 import { cn } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Separator } from "../ui/separator";
 import { Badge } from "../ui/badge";
 
 const formSchema = z.object({
@@ -78,10 +77,7 @@ export default function FlowModal({ isOpen, setIsOpen, flow, elements, flows, on
     
     setPaths(initialPaths);
     
-    const allSelectedIds = new Set(initialPaths.flat().map(el => el.id));
-    const initialAvailable = elements
-      .filter(el => !allSelectedIds.has(el.id))
-      .sort((a, b) => a.name.localeCompare(b.name));
+    const initialAvailable = [...elements].sort((a, b) => a.name.localeCompare(b.name));
 
     setAvailableElements(initialAvailable);
     
@@ -91,10 +87,7 @@ export default function FlowModal({ isOpen, setIsOpen, flow, elements, flows, on
   }, [flow, elements, form]);
 
   useEffect(() => {
-    const allSelectedIds = new Set(paths.flat().map(el => el.id));
-    const newAvailable = elements
-        .filter(el => !allSelectedIds.has(el.id))
-        .sort((a, b) => a.name.localeCompare(b.name));
+    const newAvailable = [...elements].sort((a, b) => a.name.localeCompare(b.name));
     setAvailableElements(newAvailable);
     form.setValue('paths', paths.map(p => p.map(el => el.id)));
   }, [paths, elements, form]);
@@ -261,7 +254,7 @@ export default function FlowModal({ isOpen, setIsOpen, flow, elements, flows, on
                           </div>
                         ))
                     ) : (
-                        <p className="text-xs text-muted-foreground text-center p-4">No available elements.</p>
+                        <p className="text-xs text-muted-foreground text-center p-4">No available elements. Try adding one first.</p>
                     )}
                   </ScrollArea>
                 </div>

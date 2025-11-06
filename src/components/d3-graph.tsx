@@ -58,8 +58,11 @@ const D3Graph: React.FC<D3GraphProps> = ({ elements, scenarios, onNodeClick, hov
     if (hoveredScenarioId) {
         svg.selectAll('.link').attr('stroke-opacity', 0.2);
         svg.selectAll(`.scenario-${sanitizeId(hoveredScenarioId)}`).attr('stroke-opacity', 1).attr('stroke-width', 5);
+        svg.selectAll('marker').style('visibility', 'hidden');
+        svg.select(`#arrow-${sanitizeId(hoveredScenarioId)}`).style('visibility', 'visible');
     } else {
         svg.selectAll('.link').attr('stroke-opacity', 1).attr('stroke-width', 4);
+        svg.selectAll('marker').style('visibility', 'visible');
     }
   }, [hoveredScenarioId]);
 
@@ -159,15 +162,20 @@ const D3Graph: React.FC<D3GraphProps> = ({ elements, scenarios, onNodeClick, hov
       .attr('fill', 'none')
       .attr('marker-end', d => `url(#arrow-${sanitizeId(d.scenarioId)})`)
       .on('mouseover', function(event, d) {
-        d3.selectAll(`.link`).attr('stroke-opacity', 0.2);
+        d3.selectAll('.link').attr('stroke-opacity', 0.2);
         d3.selectAll(`.scenario-${sanitizeId(d.scenarioId)}`).attr('stroke-opacity', 1).attr('stroke-width', 5);
+        svg.selectAll('marker').style('visibility', 'hidden');
+        svg.select(`#arrow-${sanitizeId(d.scenarioId)}`).style('visibility', 'visible');
       })
       .on('mouseout', function(event, d) {
         if (hoveredScenarioId && d.scenarioId !== hoveredScenarioId) {
              d3.selectAll('.link').attr('stroke-opacity', 0.2);
              d3.selectAll(`.scenario-${sanitizeId(hoveredScenarioId)}`).attr('stroke-opacity', 1).attr('stroke-width', 5);
+             svg.selectAll('marker').style('visibility', 'hidden');
+             svg.select(`#arrow-${sanitizeId(hoveredScenarioId)}`).style('visibility', 'visible');
         } else if (!hoveredScenarioId) {
             d3.selectAll('.link').attr('stroke-opacity', 1).attr('stroke-width', 4);
+            svg.selectAll('marker').style('visibility', 'visible');
         }
       });
     

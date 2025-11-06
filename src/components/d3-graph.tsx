@@ -247,7 +247,7 @@ const D3Graph: React.FC<D3GraphProps> = ({ elements, scenarios, onNodeClick, hov
         simulation.stop();
     };
 
-  }, [elements, validScenarios, onNodeClick, scenarioColorScale, radiusScale, elementScenarioCounts, hoveredScenarioId]);
+  }, [elements, validScenarios, onNodeClick, scenarioColorScale, radiusScale, elementScenarioCounts]);
 
   const drag = (simulation: d3.Simulation<d3.SimulationNodeDatum, undefined>) => {
     function dragstarted(event: d3.D3DragEvent<any, any, any>, d: any) {

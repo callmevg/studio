@@ -140,16 +140,16 @@ const D3Graph: React.FC<D3GraphProps> = ({ elements, scenarios, onNodeClick }) =
 
     link.append('path')
       .attr('class', d => `link scenario-${sanitizeId(d.scenarioId)}`)
-      .attr('stroke-width', 2.5)
+      .attr('stroke-width', 4)
       .attr('stroke', d => scenarioColorScale(d.scenarioId))
       .attr('fill', 'none')
       .attr('marker-end', d => `url(#arrow-${sanitizeId(d.scenarioId)})`)
       .on('mouseover', function(event, d) {
         d3.selectAll(`.link`).attr('stroke-opacity', 0.2);
-        d3.selectAll(`.scenario-${sanitizeId(d.scenarioId)}`).attr('stroke-opacity', 1).attr('stroke-width', 4);
+        d3.selectAll(`.scenario-${sanitizeId(d.scenarioId)}`).attr('stroke-opacity', 1).attr('stroke-width', 5);
       })
       .on('mouseout', function() {
-        d3.selectAll('.link').attr('stroke-opacity', 1).attr('stroke-width', 2.5);
+        d3.selectAll('.link').attr('stroke-opacity', 1).attr('stroke-width', 4);
       });
     
     link.append('title')

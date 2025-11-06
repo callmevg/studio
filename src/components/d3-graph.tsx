@@ -54,17 +54,35 @@ const D3Graph: React.FC<D3GraphProps> = ({ elements, scenarios, onNodeClick, hov
   useEffect(() => {
     if (!svgRef.current) return;
     const svg = d3.select(svgRef.current);
+    const allNodes = svg.selectAll<SVGCircleElement, UIElement>('.node-circle');
 
     if (hoveredScenarioId) {
+        const hoveredScenario = validScenarios.find(f => f.id === hoveredScenarioId);
+        const hoveredElementIds = new Set(hoveredScenario?.methods.flat());
+
         svg.selectAll('.link').attr('stroke-opacity', 0.2);
         svg.selectAll(`.scenario-${sanitizeId(hoveredScenarioId)}`).attr('stroke-opacity', 1).attr('stroke-width', 5);
         svg.selectAll('marker').style('visibility', 'hidden');
         svg.select(`#arrow-${sanitizeId(hoveredScenarioId)}`).style('visibility', 'visible');
+        
+        allNodes
+            .attr('stroke', d => {
+                if (d.isBuggy) return 'hsl(var(--destructive))';
+                return hoveredElementIds.has(d.id) ? 'hsl(var(--primary))' : 'hsl(var(--border))';
+            })
+            .attr('stroke-width', d => {
+                 if (d.isBuggy) return 4;
+                 return hoveredElementIds.has(d.id) ? 3 : 2.5;
+            });
+
     } else {
         svg.selectAll('.link').attr('stroke-opacity', 1).attr('stroke-width', 4);
         svg.selectAll('marker').style('visibility', 'visible');
+        allNodes
+            .attr('stroke', d => d.isBuggy ? 'hsl(var(--destructive))' : 'hsl(var(--border))')
+            .attr('stroke-width', d => d.isBuggy ? 4 : 2.5);
     }
-  }, [hoveredScenarioId]);
+  }, [hoveredScenarioId, validScenarios]);
 
 
   useEffect(() => {
@@ -192,6 +210,7 @@ const D3Graph: React.FC<D3GraphProps> = ({ elements, scenarios, onNodeClick, hov
       .call(drag(simulation));
 
     node.append('circle')
+      .attr('class', 'node-circle')
       .attr('r', d => radiusScale(elementScenarioCounts[d.id] || 1))
       .attr('fill', 'hsl(var(--card))')
       .attr('stroke', d => d.isBuggy ? 'hsl(var(--destructive))' : 'hsl(var(--border))')
@@ -285,3 +304,5 @@ const D3Graph: React.FC<D3GraphProps> = ({ elements, scenarios, onNodeClick, hov
 };
 
 export default D3Graph;
+
+    

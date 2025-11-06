@@ -194,7 +194,7 @@ const D3Graph: React.FC<D3GraphProps> = ({ elements, scenarios, onNodeClick, hov
     node.append('circle')
       .attr('r', d => radiusScale(elementScenarioCounts[d.id] || 1))
       .attr('fill', 'hsl(var(--card))')
-      .attr('stroke', d => d.isBuggy ? 'hsl(var(--destructive))' : 'hsl(var(--primary))')
+      .attr('stroke', d => d.isBuggy ? 'hsl(var(--destructive))' : 'hsl(var(--border))')
       .attr('stroke-width', d => d.isBuggy ? 4 : 2.5);
 
     node.append('text')

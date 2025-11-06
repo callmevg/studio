@@ -9,9 +9,10 @@ interface D3GraphProps {
   elements: UIElement[];
   scenarios: UIScenario[];
   onNodeClick: (element: UIElement) => void;
+  hoveredScenarioId: string | null;
 }
 
-const D3Graph: React.FC<D3GraphProps> = ({ elements, scenarios, onNodeClick }) => {
+const D3Graph: React.FC<D3GraphProps> = ({ elements, scenarios, onNodeClick, hoveredScenarioId }) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const simulationRef = useRef<d3.Simulation<d3.SimulationNodeDatum, undefined>>();
 
@@ -49,6 +50,19 @@ const D3Graph: React.FC<D3GraphProps> = ({ elements, scenarios, onNodeClick }) =
       const maxCount = Math.max(...counts) || 1;
       return d3.scaleSqrt().domain([minCount, maxCount]).range([25, 45]);
   }, [elementScenarioCounts]);
+
+  useEffect(() => {
+    if (!svgRef.current) return;
+    const svg = d3.select(svgRef.current);
+
+    if (hoveredScenarioId) {
+        svg.selectAll('.link').attr('stroke-opacity', 0.2);
+        svg.selectAll(`.scenario-${sanitizeId(hoveredScenarioId)}`).attr('stroke-opacity', 1).attr('stroke-width', 5);
+    } else {
+        svg.selectAll('.link').attr('stroke-opacity', 1).attr('stroke-width', 4);
+    }
+  }, [hoveredScenarioId]);
+
 
   useEffect(() => {
     if (!svgRef.current || !elements) return;
@@ -148,8 +162,13 @@ const D3Graph: React.FC<D3GraphProps> = ({ elements, scenarios, onNodeClick }) =
         d3.selectAll(`.link`).attr('stroke-opacity', 0.2);
         d3.selectAll(`.scenario-${sanitizeId(d.scenarioId)}`).attr('stroke-opacity', 1).attr('stroke-width', 5);
       })
-      .on('mouseout', function() {
-        d3.selectAll('.link').attr('stroke-opacity', 1).attr('stroke-width', 4);
+      .on('mouseout', function(event, d) {
+        if (hoveredScenarioId && d.scenarioId !== hoveredScenarioId) {
+             d3.selectAll('.link').attr('stroke-opacity', 0.2);
+             d3.selectAll(`.scenario-${sanitizeId(hoveredScenarioId)}`).attr('stroke-opacity', 1).attr('stroke-width', 5);
+        } else if (!hoveredScenarioId) {
+            d3.selectAll('.link').attr('stroke-opacity', 1).attr('stroke-width', 4);
+        }
       });
     
     link.append('title')
@@ -228,7 +247,7 @@ const D3Graph: React.FC<D3GraphProps> = ({ elements, scenarios, onNodeClick }) =
         simulation.stop();
     };
 
-  }, [elements, validScenarios, onNodeClick, scenarioColorScale, radiusScale, elementScenarioCounts]);
+  }, [elements, validScenarios, onNodeClick, scenarioColorScale, radiusScale, elementScenarioCounts, hoveredScenarioId]);
 
   const drag = (simulation: d3.Simulation<d3.SimulationNodeDatum, undefined>) => {
     function dragstarted(event: d3.D3DragEvent<any, any, any>, d: any) {

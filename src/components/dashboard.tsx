@@ -21,6 +21,7 @@ interface DashboardProps {
   onEditScenario: (scenario: UIScenario) => void;
   onDeleteScenario: (scenarioId: string) => void;
   onAddElement: () => void;
+  onScenarioHover: (scenarioId: string | null) => void;
   disabled?: boolean;
 }
 
@@ -30,6 +31,7 @@ export function Dashboard({
   onEditScenario,
   onDeleteScenario,
   onAddElement,
+  onScenarioHover,
   disabled = false
 }: DashboardProps) {
 
@@ -68,7 +70,11 @@ export function Dashboard({
                             <AccordionContent>
                                 <div className="space-y-2">
                                 {groupedScenarios[groupName].map(scenario => (
-                                    <Card key={scenario.id}>
+                                    <Card 
+                                        key={scenario.id} 
+                                        onMouseEnter={() => onScenarioHover(scenario.id)}
+                                        onMouseLeave={() => onScenarioHover(null)}
+                                    >
                                         <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3">
                                             <CardTitle className="text-sm font-medium">{scenario.name}</CardTitle>
                                             <div className="flex items-center space-x-1">

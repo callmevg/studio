@@ -35,7 +35,7 @@ export default function Home() {
   const [elements, setElements] = useState<UIElement[]>([]);
   const [scenarios, setScenarios] = useState<UIScenario[]>([]);
   const [loading, setLoading] = useState(true);
-  const dataInitialized = useRef(false);
+  const [hoveredScenarioId, setHoveredScenarioId] = useState<string | null>(null);
 
   const { toast } = useToast();
 
@@ -48,26 +48,27 @@ export default function Home() {
       signIn();
     }
 
-    const unsubscribeElements = getElements((data) => {
-      setElements(data);
-      if (!dataInitialized.current) {
-        checkAndInitData(data, getScenariosFromStorage());
+    const handleStorageChange = () => {
+      const currentElements = getElementsFromStorage();
+      const currentScenarios = getScenariosFromStorage();
+      setElements(currentElements);
+      setScenarios(currentScenarios);
+
+      if (currentElements.length === 0 && currentScenarios.length === 0) {
+        addSampleData();
+        toast({ title: "Welcome!", description: "We've added some sample data to get you started." });
       }
       setLoading(false);
-    });
+    };
 
-    const unsubscribeScenarios = getScenarios((data) => {
-      setScenarios(data);
-       if (!dataInitialized.current) {
-        checkAndInitData(getElementsFromStorage(), data);
-      }
-    });
+    handleStorageChange(); // Initial load
+
+    window.addEventListener('storage', handleStorageChange);
 
     return () => {
-      unsubscribeElements();
-      unsubscribeScenarios();
+      window.removeEventListener('storage', handleStorageChange);
     };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [toast]);
   
   // Helper to get scenarios synchronously for the initial check
   const getScenariosFromStorage = (): UIScenario[] => {
@@ -89,19 +90,6 @@ export default function Home() {
     if (typeof window === 'undefined') return [];
     const data = localStorage.getItem('flowverse-elements');
     return data ? JSON.parse(data) : [];
-  };
-
-
-  const checkAndInitData = (currentElements: UIElement[], currentScenarios: UIScenario[]) => {
-    if (!dataInitialized.current && currentElements.length === 0 && currentScenarios.length > 0) {
-        // This case can happen if scenarios exist but elements don't, which is unlikely but possible.
-        // We still want to initialize sample data to have a consistent state.
-    }
-    if (!dataInitialized.current && currentElements.length === 0 && (!currentScenarios || currentScenarios.length === 0)) {
-        addSampleData();
-        toast({ title: "Welcome!", description: "We've added some sample data to get you started." });
-        dataInitialized.current = true;
-    }
   };
 
   const handleNodeClick = useCallback((element: UIElement) => {
@@ -233,7 +221,7 @@ export default function Home() {
                 </TabsList>
             </div>
             <TabsContent value="graph" className="flex-1 overflow-hidden relative">
-                 <D3Graph elements={elements} scenarios={scenarios} onNodeClick={handleNodeClick} />
+                 <D3Graph elements={elements} scenarios={scenarios} onNodeClick={handleNodeClick} hoveredScenarioId={hoveredScenarioId} />
             </TabsContent>
             <TabsContent value="table" className="flex-1 overflow-auto p-4">
                 <TableView 
@@ -256,6 +244,7 @@ export default function Home() {
           onEditScenario={handleEditScenario}
           onDeleteScenario={handleDeleteScenario}
           onAddElement={() => setElementModal({ open: true, data: null, mode: 'add' })}
+          onScenarioHover={setHoveredScenarioId}
         />
         <div className="flex-1 relative bg-background/50">
           {renderContent()}

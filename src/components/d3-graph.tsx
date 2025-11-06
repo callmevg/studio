@@ -95,6 +95,7 @@ const D3Graph: React.FC<D3GraphProps> = ({ elements, scenarios, onNodeClick, hov
     svg.selectAll('*').remove();
 
     const container = svg.append('g');
+    const allNodes = svg.selectAll<SVGCircleElement, UIElement>('.node-circle');
     
     const zoom = d3.zoom<SVGSVGElement, unknown>()
       .scaleExtent([0.2, 5])
@@ -184,6 +185,18 @@ const D3Graph: React.FC<D3GraphProps> = ({ elements, scenarios, onNodeClick, hov
         d3.selectAll(`.scenario-${sanitizeId(d.scenarioId)}`).attr('stroke-opacity', 1).attr('stroke-width', 5);
         svg.selectAll('marker').style('visibility', 'hidden');
         svg.select(`#arrow-${sanitizeId(d.scenarioId)}`).style('visibility', 'visible');
+        
+        const hoveredScenario = validScenarios.find(f => f.id === d.scenarioId);
+        const hoveredElementIds = new Set(hoveredScenario?.methods.flat());
+        container.selectAll<SVGCircleElement, UIElement>('.node-circle')
+            .attr('stroke', (node_d) => {
+                if (node_d.isBuggy) return 'hsl(var(--destructive))';
+                return hoveredElementIds.has(node_d.id) ? 'hsl(var(--primary))' : 'hsl(var(--border))';
+            })
+            .attr('stroke-width', (node_d) => {
+                 if (node_d.isBuggy) return 4;
+                 return hoveredElementIds.has(node_d.id) ? 3 : 2.5;
+            });
       })
       .on('mouseout', function(event, d) {
         if (hoveredScenarioId && d.scenarioId !== hoveredScenarioId) {
@@ -194,6 +207,9 @@ const D3Graph: React.FC<D3GraphProps> = ({ elements, scenarios, onNodeClick, hov
         } else if (!hoveredScenarioId) {
             d3.selectAll('.link').attr('stroke-opacity', 1).attr('stroke-width', 4);
             svg.selectAll('marker').style('visibility', 'visible');
+            container.selectAll<SVGCircleElement, UIElement>('.node-circle')
+                .attr('stroke', d => d.isBuggy ? 'hsl(var(--destructive))' : 'hsl(var(--border))')
+                .attr('stroke-width', d => d.isBuggy ? 4 : 2.5);
         }
       });
     

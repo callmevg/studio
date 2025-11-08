@@ -5,7 +5,7 @@ import React from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { Edit, Plus, Trash2 } from "lucide-react";
+import { Edit, Plus, Trash2, Eye, EyeOff } from "lucide-react";
 import type { UIScenario } from '@/lib/types';
 import { ScrollArea } from './ui/scroll-area';
 import {
@@ -13,25 +13,32 @@ import {
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
-} from "@/components/ui/accordion"
+} from "@/components/ui/accordion";
+import { cn } from '@/lib/utils';
 
 interface DashboardProps {
   scenarios: UIScenario[];
+  hiddenScenarioIds: Set<string>;
   onAddScenario: () => void;
   onEditScenario: (scenario: UIScenario) => void;
   onDeleteScenario: (scenarioId: string) => void;
   onAddElement: () => void;
   onScenarioHover: (scenarioId: string | null) => void;
+  onToggleScenario: (scenarioId: string) => void;
+  onToggleGroup: (scenarios: UIScenario[]) => void;
   disabled?: boolean;
 }
 
 export function Dashboard({
   scenarios,
+  hiddenScenarioIds,
   onAddScenario,
   onEditScenario,
   onDeleteScenario,
   onAddElement,
   onScenarioHover,
+  onToggleScenario,
+  onToggleGroup,
   disabled = false
 }: DashboardProps) {
 
@@ -64,34 +71,52 @@ export function Dashboard({
                 <p className="text-sm text-muted-foreground text-center py-4">No scenarios created yet.</p>
             ) : (
                 <Accordion type="multiple" className="w-full" defaultValue={groupKeys}>
-                    {groupKeys.map(groupName => (
-                        <AccordionItem value={groupName} key={groupName}>
-                            <AccordionTrigger className="text-md font-semibold">{groupName}</AccordionTrigger>
-                            <AccordionContent>
-                                <div className="space-y-2">
-                                {groupedScenarios[groupName].map(scenario => (
-                                    <Card 
-                                        key={scenario.id} 
-                                        onMouseEnter={() => onScenarioHover(scenario.id)}
-                                        onMouseLeave={() => onScenarioHover(null)}
-                                    >
-                                        <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3">
-                                            <CardTitle className="text-sm font-medium">{scenario.name}</CardTitle>
-                                            <div className="flex items-center space-x-1">
-                                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onEditScenario(scenario)} disabled={disabled}>
-                                                    <Edit className="h-4 w-4" />
-                                                </Button>
-                                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onDeleteScenario(scenario.id)} disabled={disabled}>
-                                                    <Trash2 className="h-4 w-4 text-destructive" />
-                                                </Button>
-                                            </div>
-                                        </CardHeader>
-                                    </Card>
-                                ))}
+                    {groupKeys.map(groupName => {
+                        const groupScenarios = groupedScenarios[groupName];
+                        const allHidden = groupScenarios.every(s => hiddenScenarioIds.has(s.id));
+                        const GroupEyeIcon = allHidden ? EyeOff : Eye;
+                        
+                        return (
+                            <AccordionItem value={groupName} key={groupName}>
+                                <div className="flex items-center">
+                                    <AccordionTrigger className="text-md font-semibold flex-1">{groupName}</AccordionTrigger>
+                                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onToggleGroup(groupScenarios)}>
+                                        <GroupEyeIcon className="h-4 w-4" />
+                                    </Button>
                                 </div>
-                            </AccordionContent>
-                        </AccordionItem>
-                    ))}
+                                <AccordionContent>
+                                    <div className="space-y-2">
+                                    {groupScenarios.map(scenario => {
+                                        const isHidden = hiddenScenarioIds.has(scenario.id);
+                                        const EyeIcon = isHidden ? EyeOff : Eye;
+                                        return (
+                                        <Card 
+                                            key={scenario.id} 
+                                            onMouseEnter={() => onScenarioHover(scenario.id)}
+                                            onMouseLeave={() => onScenarioHover(null)}
+                                            className={cn(isHidden && "opacity-50")}
+                                        >
+                                            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3">
+                                                <CardTitle className="text-sm font-medium">{scenario.name}</CardTitle>
+                                                <div className="flex items-center space-x-1">
+                                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onToggleScenario(scenario.id)} disabled={disabled}>
+                                                        <EyeIcon className="h-4 w-4" />
+                                                    </Button>
+                                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onEditScenario(scenario)} disabled={disabled}>
+                                                        <Edit className="h-4 w-4" />
+                                                    </Button>
+                                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onDeleteScenario(scenario.id)} disabled={disabled}>
+                                                        <Trash2 className="h-4 w-4 text-destructive" />
+                                                    </Button>
+                                                </div>
+                                            </CardHeader>
+                                        </Card>
+                                    )})}
+                                    </div>
+                                </AccordionContent>
+                            </AccordionItem>
+                        )
+                    })}
                 </Accordion>
             )}
         </div>
@@ -104,3 +129,5 @@ export function Dashboard({
     </div>
   );
 }
+
+    

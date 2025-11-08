@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   getElements,
   getScenarios,
@@ -24,8 +24,6 @@ import ElementModal from '@/components/modals/element-modal';
 import ScenarioModal from '@/components/modals/scenario-modal';
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from '@/components/ui/skeleton';
-import { Button } from '@/components/ui/button';
-import { Plus } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { TableView } from '@/components/table-view';
 
@@ -36,6 +34,7 @@ export default function Home() {
   const [scenarios, setScenarios] = useState<UIScenario[]>([]);
   const [loading, setLoading] = useState(true);
   const [hoveredScenarioId, setHoveredScenarioId] = useState<string | null>(null);
+  const [hiddenScenarioIds, setHiddenScenarioIds] = useState<Set<string>>(new Set());
 
   const { toast } = useToast();
 
@@ -43,29 +42,50 @@ export default function Home() {
   const [scenarioModal, setScenarioModal] = useState<ModalState<UIScenario>>({ open: false, mode: 'add' });
 
   useEffect(() => {
-    // No-op, but keeps structure, ensure it doesn't try to connect if no config
-    if (process.env.NEXT_PUBLIC_FIREBASE_API_KEY) {
-      signIn();
-    }
-
+    let isMounted = true;
+  
+    const loadData = () => {
+      if (typeof window === 'undefined') return;
+      
+      const currentElements = getElementsFromStorage();
+      const currentScenarios = getScenariosFromStorage();
+  
+      if (currentElements.length === 0 && currentScenarios.length === 0) {
+        addSampleData();
+        const initialElements = getElementsFromStorage();
+        const initialScenarios = getScenariosFromStorage();
+        if (isMounted) {
+            setElements(initialElements);
+            setScenarios(initialScenarios);
+            toast({ title: "Welcome!", description: "We've added some sample data to get you started." });
+        }
+      } else {
+        if (isMounted) {
+            setElements(currentElements);
+            setScenarios(currentScenarios);
+        }
+      }
+      if (isMounted) {
+        setLoading(false);
+      }
+    };
+  
+    // Defer the initial load to ensure it runs only on the client after hydration
+    requestAnimationFrame(loadData);
+  
     const handleStorageChange = () => {
       const currentElements = getElementsFromStorage();
       const currentScenarios = getScenariosFromStorage();
-      setElements(currentElements);
-      setScenarios(currentScenarios);
-
-      if (currentElements.length === 0 && currentScenarios.length === 0) {
-        addSampleData();
-        toast({ title: "Welcome!", description: "We've added some sample data to get you started." });
+      if (isMounted) {
+        setElements(currentElements);
+        setScenarios(currentScenarios);
       }
-      setLoading(false);
     };
-
-    handleStorageChange(); // Initial load
-
+  
     window.addEventListener('storage', handleStorageChange);
-
+  
     return () => {
+      isMounted = false;
       window.removeEventListener('storage', handleStorageChange);
     };
   }, [toast]);
@@ -202,9 +222,40 @@ export default function Home() {
         toast({ title: 'Success', description: 'Scenarios updated.' });
     }
   };
+
+  const visibleScenarios = useMemo(() => {
+    return scenarios.filter(s => !hiddenScenarioIds.has(s.id));
+  }, [scenarios, hiddenScenarioIds]);
+
+  const toggleScenarioVisibility = (scenarioId: string) => {
+    setHiddenScenarioIds(prev => {
+        const newSet = new Set(prev);
+        if (newSet.has(scenarioId)) {
+            newSet.delete(scenarioId);
+        } else {
+            newSet.add(scenarioId);
+        }
+        return newSet;
+    });
+  };
+
+  const toggleGroupVisibility = (scenariosToToggle: UIScenario[]) => {
+    setHiddenScenarioIds(prev => {
+        const newSet = new Set(prev);
+        const groupIds = scenariosToToggle.map(s => s.id);
+        const allHidden = groupIds.every(id => newSet.has(id));
+
+        if (allHidden) {
+            groupIds.forEach(id => newSet.delete(id));
+        } else {
+            groupIds.forEach(id => newSet.add(id));
+        }
+        return newSet;
+    });
+  };
   
   const renderContent = () => {
-    if (loading && elements.length === 0) {
+    if (loading) {
         return (
           <div className="flex items-center justify-center h-full">
              <Skeleton className="w-[80%] h-[80%] rounded-lg" />
@@ -221,7 +272,7 @@ export default function Home() {
                 </TabsList>
             </div>
             <TabsContent value="graph" className="flex-1 overflow-hidden relative">
-                 <D3Graph elements={elements} scenarios={scenarios} onNodeClick={handleNodeClick} hoveredScenarioId={hoveredScenarioId} />
+                 <D3Graph elements={elements} scenarios={visibleScenarios} onNodeClick={handleNodeClick} hoveredScenarioId={hoveredScenarioId} />
             </TabsContent>
             <TabsContent value="table" className="flex-1 overflow-auto p-4">
                 <TableView 
@@ -240,11 +291,14 @@ export default function Home() {
       <main className="flex flex-1 overflow-hidden">
         <Dashboard
           scenarios={scenarios}
+          hiddenScenarioIds={hiddenScenarioIds}
           onAddScenario={() => setScenarioModal({ open: true, data: null, mode: 'add' })}
           onEditScenario={handleEditScenario}
           onDeleteScenario={handleDeleteScenario}
           onAddElement={() => setElementModal({ open: true, data: null, mode: 'add' })}
           onScenarioHover={setHoveredScenarioId}
+          onToggleScenario={toggleScenarioVisibility}
+          onToggleGroup={toggleGroupVisibility}
         />
         <div className="flex-1 relative bg-background/50">
           {renderContent()}
@@ -328,3 +382,5 @@ export default function Home() {
     </div>
   );
 }
+
+    

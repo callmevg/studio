@@ -44,7 +44,7 @@ interface ElementModalProps {
   elements: UIElement[];
   mode?: 'add' | 'edit' | 'view';
   onSave: (data: z.infer<typeof formSchema>, id?: string) => Promise<void>;
-  onDelete: (id: string) => Promise<void>;
+  onDelete: (id: string) => void;
 }
 
 export default function ElementModal({ isOpen, setIsOpen, element, elements, mode: initialMode = 'add', onSave, onDelete }: ElementModalProps) {
@@ -64,7 +64,7 @@ export default function ElementModal({ isOpen, setIsOpen, element, elements, mod
     onSave(values, element?.id);
   };
 
-  const handleDelete = async () => {
+  const handleDeleteClick = () => {
     if (element?.id) {
         onDelete(element.id);
     }
@@ -74,7 +74,13 @@ export default function ElementModal({ isOpen, setIsOpen, element, elements, mod
   const placeholderImage = PlaceHolderImages.find(img => img.id === 'bug-placeholder');
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog open={isOpen} onOpenChange={(open) => {
+      setIsOpen(open);
+      if (!open) {
+        // Reset mode to view when closing if it was an existing element
+        if(element) setMode('view');
+      }
+    }}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>
@@ -106,7 +112,7 @@ export default function ElementModal({ isOpen, setIsOpen, element, elements, mod
                  </div>
             )}
              <DialogFooter className="sm:justify-between pt-4">
-                <Button variant="destructive" onClick={handleDelete}>Delete</Button>
+                <Button variant="destructive" onClick={handleDeleteClick}>Delete</Button>
                 <Button onClick={() => setMode('edit')}>Edit</Button>
             </DialogFooter>
           </div>
@@ -168,6 +174,7 @@ export default function ElementModal({ isOpen, setIsOpen, element, elements, mod
                 )}
               />
               <DialogFooter>
+                 {mode === 'edit' && <Button variant="ghost" type="button" onClick={() => setMode('view')}>Cancel</Button>}
                 <Button type="submit">Save</Button>
               </DialogFooter>
             </form>

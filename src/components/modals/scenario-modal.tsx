@@ -27,7 +27,6 @@ import { useToast } from "@/hooks/use-toast";
 import type { UIElement, UIScenario } from "@/lib/types";
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, ArrowRight, ChevronsDown, ChevronsUp, Plus, Trash2 } from "lucide-react";
-import { deleteScenario } from "@/lib/localStorage";
 import { cn } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "../ui/badge";
@@ -135,17 +134,6 @@ export default function ScenarioModal({ isOpen, setIsOpen, scenario, elements, s
     onSave(values, scenario?.id);
   };
 
-  const handleDelete = async () => {
-    if (scenario?.id && window.confirm("Are you sure you want to delete this scenario?")) {
-      try {
-        await deleteScenario(scenario.id);
-        toast({ title: "Success", description: "Scenario deleted." });
-        setIsOpen(false);
-      } catch (error: any) {
-        toast({ variant: "destructive", title: "Error", description: error.message });
-      }
-    }
-  };
   
   const ElementItem = ({ element, onAction, actionIcon, onMove, canMoveUp, canMoveDown }: any) => (
     <div className="flex items-center justify-between p-2 rounded-md hover:bg-accent/50">
@@ -297,8 +285,7 @@ export default function ScenarioModal({ isOpen, setIsOpen, scenario, elements, s
                <FormMessage className="pl-1">{form.formState.errors.methods?.message || form.formState.errors.methods?.root?.message}</FormMessage>
             </FormItem>
 
-            <DialogFooter className={cn("pt-4", scenario ? "sm:justify-between" : "sm:justify-end")}>
-              {scenario && <Button type="button" variant="destructive" onClick={handleDelete}><Trash2 className="mr-2 h-4 w-4" />Delete Scenario</Button>}
+            <DialogFooter className="pt-4">
               <Button type="submit">Save Scenario</Button>
             </DialogFooter>
           </form>

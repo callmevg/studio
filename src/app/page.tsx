@@ -26,8 +26,21 @@ import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { TableView } from '@/components/table-view';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+
 
 type ModalState<T> = { open: boolean; data?: T | null; mode?: 'add' | 'edit' | 'view' };
+type DeleteDialogState = { open: boolean; id?: string | null; type: 'scenario' | 'element' };
+
 
 export default function Home() {
   const [elements, setElements] = useState<UIElement[]>([]);
@@ -40,6 +53,8 @@ export default function Home() {
 
   const [elementModal, setElementModal] = useState<ModalState<UIElement>>({ open: false, mode: 'add' });
   const [scenarioModal, setScenarioModal] = useState<ModalState<UIScenario>>({ open: false, mode: 'add' });
+  const [deleteDialog, setDeleteDialog] = useState<DeleteDialogState>({ open: false, type: 'scenario' });
+
 
   useEffect(() => {
     let isMounted = true;
@@ -144,28 +159,37 @@ export default function Home() {
     setScenarioModal({ open: true, data: scenario, mode: 'edit' });
   };
 
-  const handleDeleteScenario = async (scenarioId: string) => {
-    if (window.confirm("Are you sure you want to delete this scenario?")) {
+  const handleDeleteConfirm = async () => {
+    if (!deleteDialog.id) return;
+
+    if (deleteDialog.type === 'scenario') {
       try {
-        await deleteScenario(scenarioId);
+        await deleteScenario(deleteDialog.id);
         toast({ title: "Success", description: "Scenario deleted." });
       } catch (error: any) {
         toast({ variant: "destructive", title: "Error", description: error.message });
       }
-    }
-  };
-
-  const handleDeleteElement = async (elementId: string) => {
-    if (window.confirm("Are you sure you want to delete this element? This will also remove it from any scenarios it's a part of.")) {
+    } else if (deleteDialog.type === 'element') {
       try {
-        await deleteElement(elementId);
+        await deleteElement(deleteDialog.id);
         toast({ title: "Success", description: "Element deleted." });
         setElementModal({ open: false });
       } catch (error: any) {
         toast({ variant: "destructive", title: "Error", description: error.message });
       }
     }
+    setDeleteDialog({ open: false, type: 'scenario' });
   };
+
+
+  const handleDeleteScenario = (scenarioId: string) => {
+    setDeleteDialog({ open: true, id: scenarioId, type: 'scenario' });
+  };
+
+  const handleDeleteElement = (elementId: string) => {
+    setDeleteDialog({ open: true, id: elementId, type: 'element' });
+  };
+
 
   const handleAddNewElementFromScenario = () => {
     setScenarioModal({ ...scenarioModal, open: false });
@@ -379,8 +403,23 @@ export default function Home() {
           onAddNewElement={handleAddNewElementFromScenario}
         />
       )}
+
+      <AlertDialog open={deleteDialog.open} onOpenChange={(open) => setDeleteDialog({ ...deleteDialog, open })}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the {deleteDialog.type}
+              {deleteDialog.type === 'element' && ' and remove it from all scenarios.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteConfirm}>Continue</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
     </div>
   );
 }
-
-    

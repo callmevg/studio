@@ -167,6 +167,7 @@ export default function Home() {
       try {
         await deleteScenario(deleteDialog.id);
         toast({ title: "Success", description: "Scenario deleted." });
+        setScenarioModal({ open: false });
       } catch (error: any) {
         toast({ variant: "destructive", title: "Error", description: error.message });
       }
@@ -421,6 +422,7 @@ export default function Home() {
             }
           }}
           onAddNewElement={handleAddNewElementFromScenario}
+          onDelete={handleDeleteScenario}
         />
       )}
 

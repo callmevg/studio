@@ -23,7 +23,6 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { useToast } from "@/hooks/use-toast";
 import type { UIElement, UIScenario } from "@/lib/types";
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, ArrowRight, ChevronsDown, ChevronsUp, Plus, Trash2 } from "lucide-react";
@@ -46,10 +45,10 @@ interface ScenarioModalProps {
   scenarios: UIScenario[];
   onSave: (data: z.infer<typeof formSchema>, id?: string) => Promise<void>;
   onAddNewElement: () => void;
+  onDelete?: (id: string) => void;
 }
 
-export default function ScenarioModal({ isOpen, setIsOpen, scenario, elements, scenarios, onSave, onAddNewElement }: ScenarioModalProps) {
-  const { toast } = useToast();
+export default function ScenarioModal({ isOpen, setIsOpen, scenario, elements, scenarios, onSave, onAddNewElement, onDelete }: ScenarioModalProps) {
   
   const [methods, setMethods] = useState<UIElement[][]>([]);
   const [availableElements, setAvailableElements] = useState<UIElement[]>([]);
@@ -122,11 +121,7 @@ export default function ScenarioModal({ isOpen, setIsOpen, scenario, elements, s
         const newMethods = methods.filter((_, i) => i !== methodIndex);
         setMethods(newMethods);
     } else {
-        toast({
-            variant: "destructive",
-            title: "Cannot Delete",
-            description: "A scenario must have at least one method.",
-        });
+        form.setError("methods", { type: "manual", message: "A scenario must have at least one method." });
     }
   };
 
@@ -285,7 +280,12 @@ export default function ScenarioModal({ isOpen, setIsOpen, scenario, elements, s
                <FormMessage className="pl-1">{form.formState.errors.methods?.message || form.formState.errors.methods?.root?.message}</FormMessage>
             </FormItem>
 
-            <DialogFooter className="pt-4">
+            <DialogFooter className={cn("pt-4", scenario && onDelete ? "sm:justify-between" : "sm:justify-end")}>
+              {scenario && onDelete && (
+                <Button type="button" variant="destructive" onClick={() => onDelete(scenario.id)}>
+                    <Trash2 className="mr-2 h-4 w-4" />Delete Scenario
+                </Button>
+              )}
               <Button type="submit">Save Scenario</Button>
             </DialogFooter>
           </form>

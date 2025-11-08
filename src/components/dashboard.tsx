@@ -18,6 +18,7 @@ import { cn } from '@/lib/utils';
 
 interface DashboardProps {
   scenarios: UIScenario[];
+  scenarioColors: { [key: string]: string };
   hiddenScenarioIds: Set<string>;
   onAddScenario: () => void;
   onEditScenario: (scenario: UIScenario) => void;
@@ -31,6 +32,7 @@ interface DashboardProps {
 
 export function Dashboard({
   scenarios,
+  scenarioColors,
   hiddenScenarioIds,
   onAddScenario,
   onEditScenario,
@@ -94,7 +96,8 @@ export function Dashboard({
                                             key={scenario.id} 
                                             onMouseEnter={() => onScenarioHover(scenario.id)}
                                             onMouseLeave={() => onScenarioHover(null)}
-                                            className={cn(isHidden && "opacity-50")}
+                                            className={cn("border-l-4", isHidden && "opacity-50")}
+                                            style={{ borderLeftColor: scenarioColors[scenario.id] || 'hsl(var(--border))' }}
                                         >
                                             <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3">
                                                 <CardTitle className="text-sm font-medium">{scenario.name}</CardTitle>
@@ -129,5 +132,3 @@ export function Dashboard({
     </div>
   );
 }
-
-    

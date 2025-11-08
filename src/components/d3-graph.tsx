@@ -10,20 +10,16 @@ interface D3GraphProps {
   scenarios: UIScenario[];
   onNodeClick: (element: UIElement) => void;
   hoveredScenarioId: string | null;
+  scenarioColorScale: d3.ScaleOrdinal<string, string, never>;
 }
 
-const D3Graph: React.FC<D3GraphProps> = ({ elements, scenarios, onNodeClick, hoveredScenarioId }) => {
+const D3Graph: React.FC<D3GraphProps> = ({ elements, scenarios, onNodeClick, hoveredScenarioId, scenarioColorScale }) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const simulationRef = useRef<d3.Simulation<d3.SimulationNodeDatum, undefined>>();
 
   const validScenarios = useMemo(() => scenarios.filter(f => f && f.id && f.methods && f.methods.length > 0), [scenarios]);
   
   const sanitizeId = (id: string) => id.replace(/[.\s]/g, '-');
-
-  const scenarioColorScale = useMemo(() => 
-    d3.scaleOrdinal(d3.schemeCategory10).domain(validScenarios.map(f => f.id)),
-    [validScenarios]
-  );
   
   const elementScenarioCounts = useMemo(() => {
     const counts: Record<string, number> = {};

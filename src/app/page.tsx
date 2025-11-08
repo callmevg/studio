@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import * as d3 from 'd3';
 import {
   getElements,
   getScenarios,
@@ -251,6 +252,18 @@ export default function Home() {
     return scenarios.filter(s => !hiddenScenarioIds.has(s.id));
   }, [scenarios, hiddenScenarioIds]);
 
+  const scenarioColorScale = useMemo(() => {
+    return d3.scaleOrdinal(d3.schemeCategory10).domain(scenarios.map(f => f.id));
+  }, [scenarios]);
+
+  const scenarioColors = useMemo(() => {
+    const colors: { [key: string]: string } = {};
+    scenarios.forEach(scenario => {
+      colors[scenario.id] = scenarioColorScale(scenario.id);
+    });
+    return colors;
+  }, [scenarios, scenarioColorScale]);
+
   const toggleScenarioVisibility = (scenarioId: string) => {
     setHiddenScenarioIds(prev => {
         const newSet = new Set(prev);
@@ -296,7 +309,13 @@ export default function Home() {
                 </TabsList>
             </div>
             <TabsContent value="graph" className="flex-1 overflow-hidden relative">
-                 <D3Graph elements={elements} scenarios={visibleScenarios} onNodeClick={handleNodeClick} hoveredScenarioId={hoveredScenarioId} />
+                 <D3Graph 
+                    elements={elements} 
+                    scenarios={visibleScenarios} 
+                    onNodeClick={handleNodeClick} 
+                    hoveredScenarioId={hoveredScenarioId} 
+                    scenarioColorScale={scenarioColorScale}
+                />
             </TabsContent>
             <TabsContent value="table" className="flex-1 overflow-auto p-4">
                 <TableView 
@@ -315,6 +334,7 @@ export default function Home() {
       <main className="flex flex-1 overflow-hidden">
         <Dashboard
           scenarios={scenarios}
+          scenarioColors={scenarioColors}
           hiddenScenarioIds={hiddenScenarioIds}
           onAddScenario={() => setScenarioModal({ open: true, data: null, mode: 'add' })}
           onEditScenario={handleEditScenario}

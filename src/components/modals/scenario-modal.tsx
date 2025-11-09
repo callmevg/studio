@@ -70,26 +70,28 @@ export default function ScenarioModal({ isOpen, setIsOpen, scenario, elements, s
 
 
   useEffect(() => {
-    const initialMethods: UIElement[][] = scenario?.methods ? 
-        scenario.methods.map(method => method.map(id => elements.find(el => el.id === id)).filter(Boolean) as UIElement[]) 
-        : [[]];
-    
-    setMethods(initialMethods);
-    
-    const initialAvailable = [...elements].sort((a, b) => a.name.localeCompare(b.name));
-
-    setAvailableElements(initialAvailable);
-    
-    form.setValue('methods', initialMethods.map(p => p.map(el => el.id)));
-    form.setValue('name', scenario?.name || "");
-    form.setValue('group', scenario?.group || "");
-  }, [scenario, elements, form]);
+    // Only reset form fields when the modal opens for a specific scenario (or a new one)
+    if (isOpen) {
+        const initialMethods: UIElement[][] = scenario?.methods 
+            ? scenario.methods.map(method => method.map(id => elements.find(el => el.id === id)).filter(Boolean) as UIElement[]) 
+            : [[]];
+        setMethods(initialMethods);
+        form.setValue('methods', initialMethods.map(p => p.map(el => el.id)));
+        form.setValue('name', scenario?.name || "");
+        form.setValue('group', scenario?.group || "");
+    }
+  }, [scenario, isOpen, elements, form]);
 
   useEffect(() => {
+    // Update available elements whenever the main elements list changes
     const newAvailable = [...elements].sort((a, b) => a.name.localeCompare(b.name));
     setAvailableElements(newAvailable);
+    
+    // Keep form 'methods' value in sync with the 'methods' state
     form.setValue('methods', methods.map(p => p.map(el => el.id)));
+
   }, [methods, elements, form]);
+
 
   const handleSelect = (element: UIElement, methodIndex: number) => {
     const newMethods = [...methods];

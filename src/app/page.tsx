@@ -193,9 +193,26 @@ export default function Home() {
   };
 
 
-  const handleAddNewElementFromScenario = () => {
-    setScenarioModal({ ...scenarioModal, open: false });
-    setElementModal({ open: true, data: null, mode: 'add' });
+  const handleQuickAddElement = async (name: string) => {
+    const isNameTaken = elements.some(
+      (element) => element.name.toLowerCase() === name.toLowerCase()
+    );
+
+    if (isNameTaken) {
+      toast({
+        variant: "destructive",
+        title: "Duplicate Name",
+        description: `An element with the name "${name}" already exists.`,
+      });
+      return;
+    }
+    
+    try {
+      await addElement({ name, isBuggy: false, bugDetails: '', mediaLink: '' });
+      toast({ title: "Success", description: `Element "${name}" added.` });
+    } catch (error: any) {
+      toast({ variant: "destructive", title: "Error", description: error.message });
+    }
   };
 
   const handleBulkUpdate = async (type: 'elements' | 'scenarios', data: any[]) => {
@@ -422,7 +439,7 @@ export default function Home() {
               toast({ variant: "destructive", title: "Error", description: error.message });
             }
           }}
-          onAddNewElement={handleAddNewElementFromScenario}
+          onQuickAddElement={handleQuickAddElement}
           onDelete={handleDeleteScenario}
         />
       )}

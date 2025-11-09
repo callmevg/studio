@@ -44,14 +44,15 @@ interface ScenarioModalProps {
   elements: UIElement[];
   scenarios: UIScenario[];
   onSave: (data: z.infer<typeof formSchema>, id?: string) => Promise<void>;
-  onAddNewElement: () => void;
+  onQuickAddElement: (name: string) => Promise<void>;
   onDelete?: (id: string) => void;
 }
 
-export default function ScenarioModal({ isOpen, setIsOpen, scenario, elements, scenarios, onSave, onAddNewElement, onDelete }: ScenarioModalProps) {
+export default function ScenarioModal({ isOpen, setIsOpen, scenario, elements, scenarios, onSave, onQuickAddElement, onDelete }: ScenarioModalProps) {
   
   const [methods, setMethods] = useState<UIElement[][]>([]);
   const [availableElements, setAvailableElements] = useState<UIElement[]>([]);
+  const [newElementName, setNewElementName] = useState("");
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -129,6 +130,12 @@ export default function ScenarioModal({ isOpen, setIsOpen, scenario, elements, s
     onSave(values, scenario?.id);
   };
 
+  const handleQuickAddClick = async () => {
+    if (!newElementName.trim()) return;
+    await onQuickAddElement(newElementName.trim());
+    setNewElementName("");
+  };
+
   
   const ElementItem = ({ element, onAction, actionIcon, onMove, canMoveUp, canMoveDown }: any) => (
     <div className="flex items-center justify-between p-2 rounded-md hover:bg-accent/50">
@@ -150,6 +157,7 @@ export default function ScenarioModal({ isOpen, setIsOpen, scenario, elements, s
         if (!open) {
             form.reset();
             setMethods([[]]);
+            setNewElementName("");
         }
         setIsOpen(open);
     }}>
@@ -214,13 +222,26 @@ export default function ScenarioModal({ isOpen, setIsOpen, scenario, elements, s
               <FormLabel>Scenario Methods</FormLabel>
               <div className="grid grid-cols-2 gap-4">
                  <div className="border rounded-md p-2 space-y-1">
-                  <div className="flex justify-between items-center px-2">
+                  <div className="flex justify-between items-center px-2 mb-2">
                     <h4 className="font-semibold text-sm">Available Elements</h4>
-                    <Button type="button" variant="outline" size="sm" onClick={onAddNewElement}>
-                      <Plus className="mr-2 h-4 w-4" /> Add New
+                  </div>
+                  <div className="flex gap-2 px-2">
+                    <Input
+                        placeholder="New element name..."
+                        value={newElementName}
+                        onChange={(e) => setNewElementName(e.target.value)}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                                e.preventDefault();
+                                handleQuickAddClick();
+                            }
+                        }}
+                    />
+                    <Button type="button" variant="outline" onClick={handleQuickAddClick}>
+                        <Plus className="h-4 w-4" />
                     </Button>
                   </div>
-                  <ScrollArea className="h-96">
+                  <ScrollArea className="h-80">
                     {availableElements.length > 0 ? (
                         availableElements.map(el => (
                           <div key={el.id} className="flex items-center justify-between p-2 rounded-md hover:bg-accent/50">

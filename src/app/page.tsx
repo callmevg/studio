@@ -322,7 +322,9 @@ export default function Home() {
                 <TableView 
                     elements={elements} 
                     scenarios={scenarios} 
-                    onBulkUpdate={handleBulkUpdate} 
+                    onBulkUpdate={handleBulkUpdate}
+                    onDeleteElement={handleDeleteElement}
+                    onDeleteScenario={handleDeleteScenario}
                 />
             </TabsContent>
         </Tabs>
@@ -339,7 +341,6 @@ export default function Home() {
           hiddenScenarioIds={hiddenScenarioIds}
           onAddScenario={() => setScenarioModal({ open: true, data: null, mode: 'add' })}
           onEditScenario={handleEditScenario}
-          onDeleteScenario={handleDeleteScenario}
           onAddElement={() => setElementModal({ open: true, data: null, mode: 'add' })}
           onScenarioHover={setHoveredScenarioId}
           onToggleScenario={toggleScenarioVisibility}

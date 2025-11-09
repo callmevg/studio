@@ -22,7 +22,6 @@ interface DashboardProps {
   hiddenScenarioIds: Set<string>;
   onAddScenario: () => void;
   onEditScenario: (scenario: UIScenario) => void;
-  onDeleteScenario: (scenarioId: string) => void;
   onAddElement: () => void;
   onScenarioHover: (scenarioId: string | null) => void;
   onToggleScenario: (scenarioId: string) => void;
@@ -36,7 +35,6 @@ export function Dashboard({
   hiddenScenarioIds,
   onAddScenario,
   onEditScenario,
-  onDeleteScenario,
   onAddElement,
   onScenarioHover,
   onToggleScenario,

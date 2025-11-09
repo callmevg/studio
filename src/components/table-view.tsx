@@ -8,16 +8,18 @@ import { Button } from "@/components/ui/button";
 import type { UIElement, UIScenario } from '@/lib/types';
 import { Checkbox } from './ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
-import { Plus } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 import { Textarea } from './ui/textarea';
 
 interface TableViewProps {
     elements: UIElement[];
     scenarios: UIScenario[];
     onBulkUpdate: (type: 'elements' | 'scenarios', data: any[]) => Promise<void>;
+    onDeleteElement: (id: string) => void;
+    onDeleteScenario: (id: string) => void;
 }
 
-export function TableView({ elements, scenarios, onBulkUpdate }: TableViewProps) {
+export function TableView({ elements, scenarios, onBulkUpdate, onDeleteElement, onDeleteScenario }: TableViewProps) {
     const { toast } = useToast();
     const [editableElements, setEditableElements] = useState<UIElement[]>([]);
     const [editableScenarios, setEditableScenarios] = useState<UIScenario[]>([]);
@@ -131,6 +133,7 @@ export function TableView({ elements, scenarios, onBulkUpdate }: TableViewProps)
                                     <TableHead>Name</TableHead>
                                     <TableHead className="w-[100px]">Is Buggy?</TableHead>
                                     <TableHead>Bug Details</TableHead>
+                                    <TableHead className="w-[100px] text-right">Actions</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -155,6 +158,11 @@ export function TableView({ elements, scenarios, onBulkUpdate }: TableViewProps)
                                                 onChange={(e) => handleElementChange(el.id, 'bugDetails', e.target.value)}
                                                 className="h-8"
                                             />
+                                        </TableCell>
+                                        <TableCell className="p-2 text-right">
+                                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onDeleteElement(el.id)}>
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
                                         </TableCell>
                                     </TableRow>
                                 ))}
@@ -189,6 +197,7 @@ export function TableView({ elements, scenarios, onBulkUpdate }: TableViewProps)
                                     <TableHead>Name</TableHead>
                                     <TableHead>Group</TableHead>
                                     <TableHead>Methods (e.g. A, B, C; X, B)</TableHead>
+                                    <TableHead className="w-[100px] text-right">Actions</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -215,6 +224,11 @@ export function TableView({ elements, scenarios, onBulkUpdate }: TableViewProps)
                                                 className="h-8"
                                                 rows={1}
                                             />
+                                        </TableCell>
+                                        <TableCell className="p-2 text-right">
+                                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onDeleteScenario(scenario.id)}>
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
                                         </TableCell>
                                     </TableRow>
                                 ))}

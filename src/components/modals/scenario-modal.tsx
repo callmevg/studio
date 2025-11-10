@@ -57,9 +57,9 @@ export default function ScenarioModal({ isOpen, setIsOpen, scenario, elements, s
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      name: scenario?.name || "",
-      group: scenario?.group || "",
-      methods: scenario?.methods || [[]],
+      name: "",
+      group: "",
+      methods: [[]],
     },
   });
 
@@ -76,21 +76,25 @@ export default function ScenarioModal({ isOpen, setIsOpen, scenario, elements, s
             ? scenario.methods.map(method => method.map(id => elements.find(el => el.id === id)).filter(Boolean) as UIElement[]) 
             : [[]];
         setMethods(initialMethods);
-        form.setValue('methods', initialMethods.map(p => p.map(el => el.id)));
-        form.setValue('name', scenario?.name || "");
-        form.setValue('group', scenario?.group || "");
+        
+        // Reset the form with the scenario data
+        form.reset({
+          name: scenario?.name || "",
+          group: scenario?.group || "",
+          methods: initialMethods.map(p => p.map(el => el.id))
+        });
     }
-  }, [scenario, isOpen, elements, form]);
+  }, [scenario, isOpen, elements, form.reset]);
 
   useEffect(() => {
     // Update available elements whenever the main elements list changes
     const newAvailable = [...elements].sort((a, b) => a.name.localeCompare(b.name));
     setAvailableElements(newAvailable);
     
-    // Keep form 'methods' value in sync with the 'methods' state
+    // Keep form 'methods' value in sync with the 'methods' state, but don't reset other fields
     form.setValue('methods', methods.map(p => p.map(el => el.id)));
 
-  }, [methods, elements, form]);
+  }, [methods, elements, form.setValue]);
 
 
   const handleSelect = (element: UIElement, methodIndex: number) => {
@@ -193,7 +197,7 @@ export default function ScenarioModal({ isOpen, setIsOpen, scenario, elements, s
                         <Select
                             onValueChange={field.onChange}
                             defaultValue={field.value}
-                            value={field.value}
+                            value={field.value || ''}
                         >
                             <FormControl>
                                 <SelectTrigger>
@@ -317,3 +321,5 @@ export default function ScenarioModal({ isOpen, setIsOpen, scenario, elements, s
     </Dialog>
   );
 }
+
+    

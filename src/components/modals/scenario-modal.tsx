@@ -50,7 +50,7 @@ interface ScenarioModalProps {
 
 export default function ScenarioModal({ isOpen, setIsOpen, scenario, elements, scenarios, onSave, onQuickAddElement, onDelete }: ScenarioModalProps) {
   
-  const [methods, setMethods] = useState<UIElement[][]>([]);
+  const [methods, setMethods] = useState<UIElement[][]>([[]]);
   const [availableElements, setAvailableElements] = useState<UIElement[]>([]);
   const [newElementName, setNewElementName] = useState("");
 
@@ -84,14 +84,14 @@ export default function ScenarioModal({ isOpen, setIsOpen, scenario, elements, s
           methods: initialMethods.map(p => p.map(el => el.id))
         });
     }
-  }, [scenario, isOpen, elements, form.reset]);
+  }, [scenario, isOpen, form.reset]); // Removed 'elements' from dependency array
 
   useEffect(() => {
-    // Update available elements whenever the main elements list changes
+    // This effect now ONLY handles updating the available elements list
     const newAvailable = [...elements].sort((a, b) => a.name.localeCompare(b.name));
     setAvailableElements(newAvailable);
     
-    // Keep form 'methods' value in sync with the 'methods' state, but don't reset other fields
+    // And syncing the form's 'methods' array with the local 'methods' state
     form.setValue('methods', methods.map(p => p.map(el => el.id)));
 
   }, [methods, elements, form.setValue]);
@@ -161,7 +161,7 @@ export default function ScenarioModal({ isOpen, setIsOpen, scenario, elements, s
   return (
     <Dialog open={isOpen} onOpenChange={(open) => {
         if (!open) {
-            form.reset();
+            // form.reset() is now handled by the useEffect above
             setMethods([[]]);
             setNewElementName("");
         }
@@ -321,5 +321,7 @@ export default function ScenarioModal({ isOpen, setIsOpen, scenario, elements, s
     </Dialog>
   );
 }
+
+    
 
     

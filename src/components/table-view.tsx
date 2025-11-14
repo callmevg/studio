@@ -116,8 +116,6 @@ export function TableView({ elements, scenarios, onBulkUpdate, onDeleteElement, 
     };
 
 
-    const elementNamesList = elements.map(e => e.name).join(', ');
-
     return (
         <div className="space-y-4">
             <Card>
@@ -183,10 +181,6 @@ export function TableView({ elements, scenarios, onBulkUpdate, onDeleteElement, 
                     <CardTitle>Scenarios</CardTitle>
                         <CardDescription>
                         View and edit your user scenarios. Use comma-separated names for elements within a method, and semicolon-separated for different methods.
-                        <br />
-                        <span className="text-xs text-muted-foreground">
-                            Available elements: <span className="font-mono text-xs bg-muted p-1 rounded">{elementNamesList}</span>
-                        </span>
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="p-0">
